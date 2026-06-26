@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@variant dark (.dark &);
+
+@theme {
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-102: #e2e8f0;
+  --color-slate-105: #cbd5e1;
+  --color-slate-150: #e2e8f0;
+  --color-slate-200: #e2e8f0;
+  --color-slate-205: #cbd5e1;
+  --color-slate-250: #94a3b8;
+  --color-slate-300: #cbd5e1;
+  --color-slate-301: #94a3b8;
+  --color-slate-305: #64748b;
+  --color-slate-350: #94a3b8;
+  --color-slate-400: #94a3b8;
+  --color-slate-405: #64748b;
+  --color-slate-415: #475569;
+  --color-slate-450: #475569;
+  --color-slate-505: #334155;
+  --color-slate-605: #334155;
+  --color-slate-650: #334155;
+  --color-slate-651: #1e293b;
+  --color-slate-655: #1e293b;
+  --color-slate-702: #334155;
+  --color-slate-703: #1e293b;
+  --color-slate-705: #1e293b;
+  --color-slate-755: #1e293b;
+  --color-slate-801: #0f172a;
+  --color-slate-805: #0f172a;
+  --color-slate-850: #1e293b;
+  --color-slate-855: #0f172a;
+  --color-slate-880: #020617;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@media print {
+  /* Suppress browser margins, headers, footers */
+  @page {
+    margin: 0 !important;
+  }
+  
+  html, body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide entire page structure */
+  #app-workspace,
+  header,
+  aside,
+  nav,
+  button,
+  select,
+  .print\:hidden {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Clear all overlay fixed positioning, shadows, backdrops */
+  .fixed, .absolute {
+    position: static !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  /* Only allow print targets to display, taking full viewport size */
+  #print-area, #barcode-print-grid, #reprint-ticket-box {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Specialized flexible wrapping for barcode printing */
+  #barcode-print-grid {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    justify-content: center !important;
+    padding: 24px !important;
+  }
+
+  /* High contrast for direct printer heads */
+  #print-area *, #barcode-print-grid *, #reprint-ticket-box * {
+    background-color: transparent !important;
+    color: #000000 !important;
+    border-color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}
