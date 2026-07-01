@@ -7,6 +7,7 @@ import {
 import html2canvas from 'html2canvas';
 import { DBState, addLog } from '../db';
 import { Product, Customer, CartItem, Sale, HoldCart } from '../types';
+import { triggerHaptic } from '../lib/capacitor';
 
 interface POSBillingProps {
   db: DBState;
@@ -133,6 +134,7 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
         priceType: billingPriceMode
       }]);
     }
+    triggerHaptic('light');
   };
 
   // Keep handleAddToCart fresh using a ref to avoid re-binding the window event listener too often
@@ -146,6 +148,37 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
     productsRef.current = products;
   }, [products]);
 
+  // State refs to keep the global keyboard event listener fresh without re-binding
+  const cartRef = useRef(cart);
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
+
+  const billingPriceModeRef = useRef(billingPriceMode);
+  useEffect(() => {
+    billingPriceModeRef.current = billingPriceMode;
+  }, [billingPriceMode]);
+
+  const showHoldModalRef = useRef(showHoldModal);
+  useEffect(() => {
+    showHoldModalRef.current = showHoldModal;
+  }, [showHoldModal]);
+
+  const showPayModalRef = useRef(showPayModal);
+  useEffect(() => {
+    showPayModalRef.current = showPayModal;
+  }, [showPayModal]);
+
+  const showReceiptRef = useRef(showReceipt);
+  useEffect(() => {
+    showReceiptRef.current = showReceipt;
+  }, [showReceipt]);
+
+  const continuousScanModeRef = useRef(continuousScanMode);
+  useEffect(() => {
+    continuousScanModeRef.current = continuousScanMode;
+  }, [continuousScanMode]);
+
   // Visual scan feedback trigger
   const triggerScanFeedback = (itemName: string) => {
     setLastScannedItem(itemName);
@@ -154,117 +187,6 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
       setShowScanSuccess(false);
     }, 2000);
   };
-
-  // Continuous barcode scanner keyboard hook
-  useEffect(() => {
-    if (!continuousScanMode) return;
-
-    let buffer = '';
-    let lastKeyTime = Date.now();
-
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Ignore modifier keys like Ctrl, Alt, Meta
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
-
-      let isInput = false;
-      let isBarcodeField = false;
-
-      // Safely access target properties to avoid cross-origin frame SecurityErrors
-      try {
-        if (e.target) {
-          const target = e.target as any;
-          const tagName = target.tagName;
-          const isContentEditable = target.isContentEditable;
-          isInput = (
-            tagName === 'INPUT' || 
-            tagName === 'TEXTAREA' || 
-            tagName === 'SELECT' ||
-            isContentEditable === true ||
-            (typeof isContentEditable === 'string' && isContentEditable !== 'false')
-          );
-          isBarcodeField = (target === barcodeInputRef.current);
-        }
-      } catch (err) {
-        // If there's a cross-origin or security exception accessing e.target, fail-safe
-        isInput = false;
-        isBarcodeField = false;
-      }
-
-      const now = Date.now();
-      const timeDiff = now - lastKeyTime;
-      lastKeyTime = now;
-
-      // Hardware barcode scanners send keys extremely fast (typically < 35ms between keys)
-      const isFastScanner = timeDiff < 35;
-
-      // Determine if we should capture this keystroke:
-      // - If we are not focused on an input element, capture always
-      // - If we are focused on an input element, but the keypress interval is scanner-speed (<35ms), capture it.
-      const shouldAccumulate = !isInput || isBarcodeField || (isInput && isFastScanner);
-
-      if (!shouldAccumulate) {
-        // Clear buffer if user is typing manually in another input
-        buffer = '';
-        return;
-      }
-
-      // Enter key marks the end of barcode scan
-      if (e.key === 'Enter') {
-        const trimmedBuffer = buffer.trim();
-        if (trimmedBuffer.length > 0) {
-          const findProduct = productsRef.current.find(p => 
-            p.barcode === trimmedBuffer || 
-            p.sku.toLowerCase() === trimmedBuffer.toLowerCase()
-          );
-
-          if (findProduct) {
-            handleAddToCartRef.current(findProduct);
-            buffer = '';
-            setBarcodeInput(''); // Clear the visible barcode input
-            triggerScanFeedback(findProduct.name);
-
-            // Prevent default action so forms don't submit or buttons aren't triggered
-            e.preventDefault();
-            e.stopPropagation();
-          } else {
-            // If scanner-speed scan or not focused on an input, notify that the product isn't found
-            if (isFastScanner || !isInput) {
-              triggerToast(`Scanned code "${trimmedBuffer}" not found in retail catalog.`, 'error', 'Scanner Error');
-              buffer = '';
-              setBarcodeInput('');
-              e.preventDefault();
-              e.stopPropagation();
-            }
-          }
-        }
-        return;
-      }
-
-      // Accumulate printable, single-character keys
-      if (e.key.length === 1) {
-        // Prevent default so manual characters don't print on the page/trigger browser hotkeys when not in an input
-        if (!isInput) {
-          e.preventDefault();
-        }
-
-        // Limit maximum buffer size to prevent memory issues
-        if (buffer.length > 50) {
-          buffer = '';
-        }
-        buffer += e.key;
-
-        // Sync with the visible input for a nice reactive feel if not focused elsewhere
-        if (!isInput) {
-          setBarcodeInput(buffer);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleGlobalKeyDown, true);
-    return () => {
-      window.removeEventListener('keydown', handleGlobalKeyDown, true);
-    };
-  }, [continuousScanMode]);
 
   // Alter qty
   const handleUpdateQty = (idx: number, val: number) => {
@@ -354,12 +276,196 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
 
   // Clear / Cancel POS
   const handleResetPOS = () => {
+    triggerHaptic('medium');
     setCart([]);
     setInvoiceNotes('');
     setOverallDiscount(0);
     setSelectedCustomerId('cust-1');
     setBarcodeInput('');
   };
+
+  // Continuous barcode scanner & universal keyboard shortcuts hook
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const key = e.key;
+
+      // Handle Escape key to close active modal dialogs
+      if (key === 'Escape') {
+        if (showHoldModalRef.current) {
+          e.preventDefault();
+          setShowHoldModal(false);
+        } else if (showPayModalRef.current) {
+          e.preventDefault();
+          setShowPayModal(false);
+        } else if (showReceiptRef.current) {
+          e.preventDefault();
+          setShowReceipt(false);
+        }
+        return;
+      }
+
+      // Check for global POS keyboard shortcuts
+      const isSearchHotkey = key === 'F1' || (e.altKey && key.toLowerCase() === 's');
+      const isBarcodeHotkey = key === 'F2' || (e.altKey && key.toLowerCase() === 'b');
+      const isCustomerHotkey = key === 'F3' || (e.altKey && key.toLowerCase() === 'c');
+      const isPriceModeHotkey = key === 'F4' || (e.altKey && key.toLowerCase() === 'm');
+      const isParkHotkey = key === 'F8' || (e.altKey && key.toLowerCase() === 'p');
+      const isCheckoutHotkey = key === 'F9' || (e.altKey && (key === 'Enter' || key.toLowerCase() === 'e'));
+      const isResetHotkey = key === 'F10' || (e.altKey && key.toLowerCase() === 'r');
+
+      if (isSearchHotkey) {
+        e.preventDefault();
+        e.stopPropagation();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      if (isBarcodeHotkey) {
+        e.preventDefault();
+        e.stopPropagation();
+        barcodeInputRef.current?.focus();
+        barcodeInputRef.current?.select();
+        return;
+      }
+
+      if (isCustomerHotkey) {
+        e.preventDefault();
+        e.stopPropagation();
+        customerSelectRef.current?.focus();
+        return;
+      }
+
+      if (isPriceModeHotkey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextMode = billingPriceModeRef.current === 'retail' ? 'wholesale' : 'retail';
+        handleBillingPriceModeChange(nextMode);
+        triggerToast(`Switched Billing Price Mode to: ${nextMode.toUpperCase()}`, 'success', 'Billing Category');
+        return;
+      }
+
+      if (isParkHotkey) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (cartRef.current.length > 0) {
+          setShowHoldModal(true);
+        } else {
+          triggerToast('Your cart is empty. Cannot park empty ticket.', 'warning', 'Park Bill');
+        }
+        return;
+      }
+
+      if (isCheckoutHotkey) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (cartRef.current.length > 0) {
+          handleOpenPayment();
+        } else {
+          triggerToast('Your cart is empty. Please add items to checkout.', 'warning', 'Checkout');
+        }
+        return;
+      }
+
+      if (isResetHotkey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleResetPOS();
+        triggerToast('Cart cleared and default state restored.', 'info', 'Cart Reset');
+        return;
+      }
+
+      // If user holds standard modifier keys and it wasn't one of our hotkeys, ignore it to prevent overriding browser shortcuts
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      // Process hands-free barcode scanning if enabled
+      if (!continuousScanModeRef.current) return;
+
+      let isInput = false;
+      let isBarcodeField = false;
+
+      // Safely check focus to prevent cross-origin errors
+      try {
+        if (e.target) {
+          const target = e.target as any;
+          const tagName = target.tagName;
+          const isContentEditable = target.isContentEditable;
+          isInput = (
+            tagName === 'INPUT' || 
+            tagName === 'TEXTAREA' || 
+            tagName === 'SELECT' ||
+            isContentEditable === true ||
+            (typeof isContentEditable === 'string' && isContentEditable !== 'false')
+          );
+          isBarcodeField = (target === barcodeInputRef.current);
+        }
+      } catch (err) {
+        isInput = false;
+        isBarcodeField = false;
+      }
+
+      const now = Date.now();
+      const timeDiff = now - lastKeyTime;
+      lastKeyTime = now;
+
+      const isFastScanner = timeDiff < 35;
+      const shouldAccumulate = !isInput || isBarcodeField || (isInput && isFastScanner);
+
+      if (!shouldAccumulate) {
+        buffer = '';
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        const trimmedBuffer = buffer.trim();
+        if (trimmedBuffer.length > 0) {
+          const findProduct = productsRef.current.find(p => 
+            p.barcode === trimmedBuffer || 
+            p.sku.toLowerCase() === trimmedBuffer.toLowerCase()
+          );
+
+          if (findProduct) {
+            handleAddToCartRef.current(findProduct);
+            buffer = '';
+            setBarcodeInput('');
+            triggerScanFeedback(findProduct.name);
+            e.preventDefault();
+            e.stopPropagation();
+          } else {
+            if (isFastScanner || !isInput) {
+              triggerToast(`Scanned code "${trimmedBuffer}" not found in retail catalog.`, 'error', 'Scanner Error');
+              buffer = '';
+              setBarcodeInput('');
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }
+        }
+        return;
+      }
+
+      if (e.key.length === 1) {
+        if (!isInput) {
+          e.preventDefault();
+        }
+        if (buffer.length > 50) {
+          buffer = '';
+        }
+        buffer += e.key;
+        if (!isInput) {
+          setBarcodeInput(buffer);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown, true);
+    };
+  }, [handleBillingPriceModeChange, handleOpenPayment, handleResetPOS]);
 
   // Submit payment order
   const handleConfirmCheckout = () => {
@@ -476,6 +582,7 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
     });
 
     addLog('POS Checkout', `Created invoice #${invoiceNumber} total ${currency} ${grandTotal}`);
+    triggerHaptic('success');
 
     setLastInvoice(newSale);
     setShowPayModal(false);
@@ -800,6 +907,35 @@ ${settings.receiptFooter}
               </button>
             ))}
           </div>
+
+          {/* Keyboard Shortcuts Cheat Sheet */}
+          <div className="hidden md:flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 pt-2.5 border-t border-slate-100 dark:border-slate-700/50 select-none">
+            <span className="text-slate-500 dark:text-slate-400 font-bold">⌨️ Hotkeys:</span>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 shadow-xxs">F1</kbd> Search
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 shadow-xxs">F2</kbd> Scan
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 shadow-xxs">F3</kbd> Customer
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 shadow-xxs">F4</kbd> Mode
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 shadow-xxs">F8</kbd> Park
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 shadow-xxs">F9</kbd> Pay
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 shadow-xxs">F10</kbd> Reset
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 shadow-xxs">Esc</kbd> Close
+            </div>
+          </div>
         </div>
 
         {/* Product Cards Grid section */}
@@ -893,10 +1029,22 @@ ${settings.receiptFooter}
               <User className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checkout Mode</label>
-              <div className="text-slate-800 dark:text-slate-100 text-sm py-1 font-semibold">
-                Standard Walk-In Checkout
-              </div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account Client</label>
+              <select
+                ref={customerSelectRef}
+                value={selectedCustomerId}
+                onChange={(e) => {
+                  setSelectedCustomerId(e.target.value);
+                  triggerHaptic('light');
+                }}
+                className="w-full bg-transparent border-0 border-b border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm py-1 font-semibold focus:outline-none focus:ring-0 focus:border-indigo-600 transition-all cursor-pointer"
+              >
+                {customers.map(c => (
+                  <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                    {c.name} {c.id !== 'cust-1' ? `(Bal: ${currency}${c.currentBalance.toLocaleString()})` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

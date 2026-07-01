@@ -21,6 +21,7 @@ import Reports from './components/Reports';
 import Settings from './components/Settings';
 import BackupRestore from './components/BackupRestore';
 import { About } from './components/About';
+import { initCapacitorNative } from './lib/capacitor';
 
 export default function App() {
   const [db, setDb] = useState<DBState>(() => getDB());
@@ -61,6 +62,7 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    initCapacitorNative(isDark);
   }, [isDark]);
 
   const handleSaveDB = (newDb: DBState) => {
