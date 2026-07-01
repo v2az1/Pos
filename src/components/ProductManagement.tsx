@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { DBState, addLog } from '../db';
 import { Product, Category } from '../types';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 interface ProductManagementProps {
   db: DBState;
@@ -711,26 +713,52 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Or Upload local file</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setFormData(prev => ({ ...prev, image: reader.result as string }));
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="block w-full text-[10.5px] text-slate-500
-                        file:mr-4 file:py-1 file:px-2.5
-                        file:rounded-lg file:border-0
-                        file:text-[10px] file:font-bold
-                        file:bg-indigo-50 file:text-indigo-750
-                        hover:file:bg-indigo-100 transition cursor-pointer"
-                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setFormData(prev => ({ ...prev, image: reader.result as string }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="block text-[10.5px] text-slate-500
+                          file:mr-2 file:py-1 file:px-2.5
+                          file:rounded-lg file:border-0
+                          file:text-[10px] file:font-bold
+                          file:bg-indigo-50 file:text-indigo-750
+                          hover:file:bg-indigo-100 transition cursor-pointer"
+                      />
+                      
+                      {Capacitor.isNativePlatform() && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const photo = await Camera.getPhoto({
+                                quality: 80,
+                                allowEditing: false,
+                                resultType: CameraResultType.DataUrl,
+                                source: CameraSource.Camera
+                              });
+                              if (photo.dataUrl) {
+                                setFormData(prev => ({ ...prev, image: photo.dataUrl }));
+                              }
+                            } catch (err) {
+                              console.warn('Camera photo capture cancelled or failed:', err);
+                            }
+                          }}
+                          className="py-1 px-2.5 bg-emerald-50 dark:bg-emerald-955/20 text-emerald-700 dark:text-emerald-450 text-[10px] font-bold rounded-lg border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 transition inline-flex items-center gap-1 shrink-0"
+                        >
+                          📷 Snap Photo
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

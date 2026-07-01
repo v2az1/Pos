@@ -3,6 +3,9 @@ import {
   Download, Upload, RefreshCw, AlertTriangle, CheckCircle2, ShieldAlert, FileJson, X
 } from 'lucide-react';
 import { DBState, getInitialDB, addLog } from '../db';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 interface BackupRestoreProps {
   db: DBState;
@@ -25,29 +28,54 @@ export default function BackupRestore({ db, onSaveDB }: BackupRestoreProps) {
   }>({ show: false, type: 'clean', typedConfirmation: '' });
 
   // Trigger full JSON state download mimicking local offline SQLite backups
-  const handleExportBackup = () => {
+  const handleExportBackup = async () => {
     try {
       const dbString = JSON.stringify(db, null, 2);
-      const blob = new Blob([dbString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      link.download = `offline_pos_backup_${timestamp}.json`;
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const fileName = `offline_pos_backup_${timestamp}.json`;
+      let sizeString = '';
+
+      if (Capacitor.isNativePlatform()) {
+        // Write backup file to native app cache directory
+        const writeResult = await Filesystem.writeFile({
+          path: fileName,
+          data: dbString,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8
+        });
+
+        // Use native share dialog so the user can easily copy/send/save it
+        await Share.share({
+          title: 'POS Database Backup',
+          text: `POS database backup compiled on ${new Date().toLocaleDateString()}`,
+          url: writeResult.uri,
+          dialogTitle: 'Share POS Backup File'
+        });
+
+        const sizeKB = Math.round(dbString.length / 1024);
+        sizeString = `${sizeKB} KB`;
+      } else {
+        const blob = new Blob([dbString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        sizeString = `${Math.round(blob.size / 1024)} KB`;
+      }
 
       // Record backup log metadata
       const newBackupRecord = {
         id: 'bak-' + Date.now(),
         date: new Date().toISOString(),
-        name: `offline_pos_backup_${timestamp}.json`,
-        size: `${Math.round(blob.size / 1024)} KB`,
+        name: fileName,
+        size: sizeString,
         type: 'manual' as const
       };
 

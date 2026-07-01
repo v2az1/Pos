@@ -8,6 +8,9 @@ import html2canvas from 'html2canvas';
 import { DBState, addLog } from '../db';
 import { Product, Customer, CartItem, Sale, HoldCart } from '../types';
 import { triggerHaptic } from '../lib/capacitor';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 interface POSBillingProps {
   db: DBState;
@@ -594,7 +597,7 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
     window.print();
   };
 
-  const handleSaveInvoiceToFile = () => {
+  const handleSaveInvoiceToFile = async () => {
     if (!lastInvoice) return;
     
     // Create beautifully formatted plain text receipt
@@ -635,19 +638,41 @@ ${settings.receiptFooter}
 ========================================
 `.trim();
     const filename = `Invoice_${lastInvoice.invoiceNo}.txt`;
-    const mimeType = 'text/plain';
 
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} downloaded locally in TXT format`);
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const writeResult = await Filesystem.writeFile({
+          path: filename,
+          data: content,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8
+        });
+
+        await Share.share({
+          title: `Invoice #${lastInvoice.invoiceNo}`,
+          text: `Plain text receipt for Invoice #${lastInvoice.invoiceNo}`,
+          url: writeResult.uri,
+          dialogTitle: 'Share Receipt text'
+        });
+        
+        addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} shared natively in TXT format`);
+      } catch (err: any) {
+        console.error('Failed to save/share native txt receipt:', err);
+      }
+    } else {
+      const mimeType = 'text/plain';
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} downloaded locally in TXT format`);
+    }
   };
 
   const handleSaveInvoiceAsImage = async () => {
@@ -783,14 +808,34 @@ ${settings.receiptFooter}
         }
       });
       const dataUrl = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `Invoice_${lastInvoice.invoiceNo}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} saved locally as image (PNG)`);
+      const filename = `Invoice_${lastInvoice.invoiceNo}.png`;
+
+      if (Capacitor.isNativePlatform()) {
+        const rawBase64 = dataUrl.split(',')[1];
+        const writeResult = await Filesystem.writeFile({
+          path: filename,
+          data: rawBase64,
+          directory: Directory.Cache
+        });
+
+        await Share.share({
+          title: `Invoice #${lastInvoice.invoiceNo}`,
+          text: `Invoice graphic for order #${lastInvoice.invoiceNo}`,
+          url: writeResult.uri,
+          dialogTitle: 'Share Invoice Image'
+        });
+
+        addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} shared natively as image (PNG)`);
+      } else {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} saved locally as image (PNG)`);
+      }
     } catch (error) {
       console.error('Failed to capture receipt as image:', error);
     }

@@ -52,7 +52,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
       user: {
         ...user,
         username: username.trim(),
-        passwordHash: newPassword ? 'custom_hashed_or_plain' : user.passwordHash // simple pass custom
+        passwordHash: newPassword ? newPassword : user.passwordHash
       }
     });
 
