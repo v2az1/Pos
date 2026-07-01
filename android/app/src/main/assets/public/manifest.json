@@ -1,0 +1,18 @@
+{
+  "short_name": "WholesalePOS",
+  "name": "Wholesale POS Terminal Pro",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#312e81",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["business", "finance", "productivity", "shopping"],
+  "description": "Enterprise POS Terminal & Offline Inventory Station"
+}
