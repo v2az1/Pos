@@ -1271,7 +1271,7 @@ ${settings.receiptFooter}
           {/* Grand Total */}
           <div className="flex justify-between items-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-850 text-slate-900 dark:text-white mt-1 border border-slate-100 dark:border-slate-800">
             <span className="text-xs font-extrabold uppercase tracking-widest text-slate-400">Total Payable</span>
-            <span className="text-2xl font-black text-indigo-650 dark:text-white">
+            <span className="text-2xl font-black text-indigo-600 dark:text-white">
               {currency} {grandTotal.toLocaleString()}
             </span>
           </div>
@@ -1372,7 +1372,7 @@ ${settings.receiptFooter}
 
             <div className="space-y-3 pt-1">
               <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-widest">Active Channels</label>
-              <div className="py-2.5 px-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-500/20 flex items-center justify-between">
+              <div className="py-2.5 px-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-500/20 flex items-center justify-between">
                 <span>Cash Payment Only</span>
                 <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] uppercase rounded-lg border border-emerald-500/20 font-bold">Active</span>
               </div>

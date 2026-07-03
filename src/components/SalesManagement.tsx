@@ -145,7 +145,7 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
             <button
               key={type}
               onClick={() => setFilterType(type)}
-              className={`px-4 py-2 rounded-xl border transition ${filterType === type ? 'bg-indigo-650 text-white border-indigo-650' : 'bg-transparent border-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200'}`}
+              className={`px-4 py-2 rounded-xl border transition ${filterType === type ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-transparent border-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200'}`}
             >
               {type}
             </button>

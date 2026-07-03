@@ -306,7 +306,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
 
           <button
             onClick={() => { resetForm(); setShowAddEditModal(true); }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-indigo-650 hover:bg-indigo-600 transition shadow-md active:scale-98"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-md active:scale-98"
           >
             <Plus className="w-5 h-5" /> Add New SKU Code
           </button>
@@ -471,7 +471,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
                             setCustomCategoryName('');
                             setShowAddEditModal(true);
                           }}
-                          className="p-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 text-indigo-650 rounded-lg transition"
+                          className="p-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 text-indigo-600 rounded-lg transition"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -502,19 +502,22 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
 
       {/* ADD/EDIT PRODUCT MODAL popup */}
       {showAddEditModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-40 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-2xl max-w-2xl w-full my-8 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-40 overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-2xl max-w-2xl w-full my-auto flex flex-col max-h-[90vh] space-y-4">
             
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between shrink-0">
               <h3 className="font-extrabold text-slate-850 dark:text-white text-base">
                 {editingProduct ? `Edit SKU Catalog - ${editingProduct.sku}` : 'Add New Retail Product SKU'}
               </h3>
               <button onClick={() => setShowAddEditModal(false)} className="text-slate-400 hover:text-slate-200">✕ Close</button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSaveProduct} className="flex flex-col flex-1 overflow-hidden min-h-0">
               
-              <div className="sm:col-span-2">
+              {/* Scrollable form fields container */}
+              <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2">
+                
+                <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-slate-400 mb-1">PRODUCT DISPLAY NAME *</label>
                 <input
                   type="text"
@@ -551,7 +554,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
                 <button
                   type="button"
                   onClick={autoGenerateCodes}
-                  className="bg-indigo-650 hover:bg-indigo-600 text-white font-bold px-3 py-2 text-xs rounded-lg transition py-2 whitespace-nowrap active:scale-98 shadow-sm shrink-0"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 text-xs rounded-lg transition py-2 whitespace-nowrap active:scale-98 shadow-sm shrink-0"
                 >
                   Auto Generate
                 </button>
@@ -672,7 +675,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
 
               {/* Educational Category Info Banner */}
               <div className="sm:col-span-2 p-3.5 bg-indigo-50/50 dark:bg-indigo-950/15 border border-indigo-100/30 rounded-2xl flex items-start gap-2.5">
-                <Info className="w-4.5 h-4.5 text-indigo-550 shrink-0 mt-0.5" />
+                <Info className="w-4.5 h-4.5 text-indigo-500 shrink-0 mt-0.5" />
                 <div className="text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-350">
                   <strong className="text-slate-700 dark:text-slate-200 block mb-0.5">What is the Category Section & How it Works:</strong>
                   Categories organize your store's inventory. When you select a Category (like <code className="font-mono bg-indigo-100/50 px-1 rounded dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">Groceries</code> or <code className="font-mono bg-indigo-100/50 px-1 rounded dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">Beverages</code>), this product automatically groups into that category on the POS Terminal, making search during checkout lightning-fast. It also routes reporting parameters, stock alerts, and financial sales analytics correctly in the Reports section.
@@ -774,7 +777,9 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
                 />
               </div>
 
-              <div className="sm:col-span-2 flex gap-2 text-xs pt-4 border-t border-slate-100 dark:border-slate-800">
+              </div> {/* End of scrollable grid container */}
+
+              <div className="flex gap-2 text-xs pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowAddEditModal(false)}
@@ -797,8 +802,8 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
 
       {/* MANUAL STOCK ADJUSTMENT TRIGGER MODAL */}
       {showAdjustModal && adjustingProduct && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-40">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xl max-w-sm w-full space-y-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xl max-w-sm w-full my-8 space-y-4">
             <div>
               <h3 className="font-bold text-slate-800 dark:text-white text-base">Audited Stock Move</h3>
               <p className="text-xs text-slate-400">Current Qty for {adjustingProduct.name}: <strong>{adjustingProduct.quantity} {adjustingProduct.unit}</strong></p>
@@ -811,14 +816,14 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
                   <button
                     type="button"
                     onClick={() => setAdjustType('Add')}
-                    className={`py-2 px-1 text-xs font-bold rounded-xl border transition ${adjustType === 'Add' ? 'bg-indigo-650/10 border-indigo-500 text-indigo-400' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
+                    className={`py-2 px-1 text-xs font-bold rounded-xl border transition ${adjustType === 'Add' ? 'bg-indigo-600/10 border-indigo-500 text-indigo-500' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
                   >
                     Add Stock (+)
                   </button>
                   <button
                     type="button"
                     onClick={() => setAdjustType('Subtract')}
-                    className={`py-2 px-1 text-xs font-bold rounded-xl border transition ${adjustType === 'Subtract' ? 'bg-indigo-650/10 border-indigo-500 text-indigo-400' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
+                    className={`py-2 px-1 text-xs font-bold rounded-xl border transition ${adjustType === 'Subtract' ? 'bg-indigo-600/10 border-indigo-500 text-indigo-500' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
                   >
                     Subtract Stock (-)
                   </button>
@@ -892,7 +897,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
                     <button
                       key={n}
                       onClick={() => setBarcodeLabelsCount(n)}
-                      className={`py-1.5 px-3 border rounded-lg text-xs font-bold transition ${barcodeLabelsCount === n ? 'bg-indigo-650 text-white border-indigo-650' : 'bg-transparent text-slate-500 hover:bg-slate-50'}`}
+                      className={`py-1.5 px-3 border rounded-lg text-xs font-bold transition ${barcodeLabelsCount === n ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-transparent text-slate-500 hover:bg-slate-50'}`}
                     >
                       {n} Labels
                     </button>
@@ -934,7 +939,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
               </button>
               <button
                 onClick={() => window.print()}
-                className="flex-1 py-3 bg-indigo-655 text-white font-bold rounded-xl hover:bg-indigo-600 transition shadow-lg flex items-center justify-center gap-1.5"
+                className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg flex items-center justify-center gap-1.5"
               >
                 Print Barcode Tags Grid
               </button>

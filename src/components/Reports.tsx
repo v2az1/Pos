@@ -94,7 +94,7 @@ export default function Reports({ db }: ReportsProps) {
           </button>
           <button
             onClick={handleDownloadCSVReport}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-indigo-650 hover:bg-indigo-600 transition shadow"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition shadow"
           >
             <Download className="w-4 h-4" /> Export CSV Spreadsheet
           </button>
@@ -191,7 +191,7 @@ export default function Reports({ db }: ReportsProps) {
             </div>
             <div className="bg-white dark:bg-slate-805 p-4 border rounded-xl shadow-xs">
               <span className="text-[10px] uppercase font-bold text-slate-350">Net store Profit</span>
-              <div className="text-xl font-black text-indigo-650 dark:text-indigo-400">{currency} {netProfitBreakdown.toLocaleString()}</div>
+              <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{currency} {netProfitBreakdown.toLocaleString()}</div>
             </div>
           </div>
 
@@ -325,7 +325,7 @@ export default function Reports({ db }: ReportsProps) {
             </div>
             <div className="flex justify-between text-base font-black bg-slate-50 p-3 rounded-xl border">
               <span>TOTAL ACCUMULATED SALES TAX IN register drawer</span>
-              <span className="text-indigo-650 dark:text-indigo-400">{currency} {totalTaxCollected.toLocaleString()}</span>
+              <span className="text-indigo-600 dark:text-indigo-400">{currency} {totalTaxCollected.toLocaleString()}</span>
             </div>
           </div>
         </div>

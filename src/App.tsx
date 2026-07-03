@@ -105,7 +105,7 @@ export default function App() {
     <div className={`min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition duration-150 font-sans antialiased`} id="app-workspace">
       
       {/* MOBILE HEADER BAR (Only visible on mobile screens) */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 text-white print:hidden shrink-0">
+      <div className="md:hidden flex items-center justify-between px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] bg-slate-900 border-b border-slate-800 text-white print:hidden shrink-0">
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setIsMobileMenuOpen(true)}
@@ -154,7 +154,7 @@ export default function App() {
           <aside className="fixed inset-y-0 left-0 w-72 bg-slate-900 text-slate-300 flex flex-col justify-between z-[60] border-r border-slate-800 shadow-2xl md:hidden animate-slide-in-left">
             <div>
               {/* Drawer header */}
-              <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="pb-5 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] px-5 border-b border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-indigo-600 rounded-xl text-white">
                     <ShoppingBag className="w-5 h-5" />
@@ -211,7 +211,7 @@ export default function App() {
                       }}
                       className={`w-full py-3 px-4 rounded-xl text-left text-xs font-bold transition flex items-center justify-between group ${
                         isActive 
-                          ? 'bg-indigo-650 text-white shadow-md' 
+                          ? 'bg-indigo-600 text-white shadow-md' 
                           : 'hover:bg-slate-800 hover:text-white'
                       }`}
                     >
@@ -229,7 +229,7 @@ export default function App() {
             </div>
 
             {/* Drawer Bottom panel */}
-            <div className="p-4 border-t border-slate-800 space-y-2">
+            <div className="px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
                 <span>Terminal Server: <strong>Offline</strong></span>
               </div>
@@ -296,7 +296,7 @@ export default function App() {
                 <button
                   key={menu.id}
                   onClick={() => setActiveView(menu.id)}
-                  className={`w-full py-2.5 px-3.5 rounded-xl text-left text-xs font-bold transition flex items-center justify-between group ${isActive ? 'bg-indigo-650 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}
+                  className={`w-full py-2.5 px-3.5 rounded-xl text-left text-xs font-bold transition flex items-center justify-between group ${isActive ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}
                 >
                   <span className="flex items-center gap-2.5">
                     <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-white' : 'text-slate-450 group-hover:text-indigo-400'}`} />
@@ -359,7 +359,7 @@ export default function App() {
 
           <div className="flex items-center gap-2 sm:gap-4 text-xs font-bold select-none text-slate-600 dark:text-slate-400">
             {/* Clock */}
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 sm:px-3 py-1.5 rounded-xl font-mono text-indigo-650 dark:text-indigo-450">
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 sm:px-3 py-1.5 rounded-xl font-mono text-indigo-600 dark:text-indigo-450">
               {currentTime || 'Loading...'}
             </div>
             

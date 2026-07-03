@@ -53,7 +53,7 @@ export default function Ledgers({ db }: LedgersProps) {
         </div>
 
         <div className="space-y-1 bg-indigo-50/50 dark:bg-indigo-950/20 p-3 rounded-xl border border-indigo-15/20">
-          <span className="text-[10px] font-bold text-indigo-650 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5"><CircleDollarSign className="w-4.5 h-4.5 text-indigo-550" /> Net Operating Cash On Hand</span>
+          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5"><CircleDollarSign className="w-4.5 h-4.5 text-indigo-500" /> Net Operating Cash On Hand</span>
           <div className="text-2xl font-black text-indigo-150 dark:text-white">{currency} {currentCashInRegister.toLocaleString()}</div>
           <p className="text-[10px] text-slate-440">Physical liquid assets operating inside register drawer</p>
         </div>

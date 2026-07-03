@@ -240,7 +240,7 @@ export default function BackupRestore({ db, onSaveDB }: BackupRestoreProps) {
       {/* BACKUP CRADLE */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
         <h3 className="font-extrabold text-slate-850 dark:text-white text-base flex items-center gap-1.5 border-b pb-3.5 mb-4">
-          <Download className="w-5 h-5 text-indigo-550" /> Compile Live Backups
+          <Download className="w-5 h-5 text-indigo-500" /> Compile Live Backups
         </h3>
 
         <div className="text-xs text-slate-450 leading-relaxed font-medium space-y-2">
@@ -250,7 +250,7 @@ export default function BackupRestore({ db, onSaveDB }: BackupRestoreProps) {
 
         <button
           onClick={handleExportBackup}
-          className="w-full py-3 bg-indigo-650 hover:bg-indigo-600 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-lg flex items-center justify-center gap-2 mt-2"
+          className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-lg flex items-center justify-center gap-2 mt-2"
         >
           <Download className="w-4.5 h-4.5" /> Export DB Backup File (.json)
         </button>
