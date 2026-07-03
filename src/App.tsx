@@ -115,9 +115,12 @@ export default function App() {
             <Menu className="w-5.5 h-5.5 text-slate-200" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-indigo-600 rounded-lg text-white">
-              <ShoppingBag className="w-4 h-4" />
-            </div>
+            <img
+              src="/logo.jpg"
+              alt="Logo"
+              className="w-7 h-7 rounded-lg object-cover border border-slate-700/50"
+              referrerPolicy="no-referrer"
+            />
             <span className="font-extrabold text-xs uppercase tracking-wider">
               {db.settings.shopName || 'Wholesale POS'}
             </span>
@@ -156,9 +159,12 @@ export default function App() {
               {/* Drawer header */}
               <div className="pb-5 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] px-5 border-b border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-600 rounded-xl text-white">
-                    <ShoppingBag className="w-5 h-5" />
-                  </div>
+                  <img
+                    src="/logo.jpg"
+                    alt="Logo"
+                    className="w-10 h-10 rounded-xl object-cover border border-slate-700/50"
+                    referrerPolicy="no-referrer"
+                  />
                   <div>
                     <h2 className="font-extrabold text-sm tracking-wide text-white leading-tight uppercase truncate max-w-[130px]">
                       {db.settings.shopName || 'Wholesale POS'}
@@ -253,9 +259,12 @@ export default function App() {
         <div>
           {/* Brand header */}
           <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-            <div className="p-2 bg-indigo-600 rounded-xl text-white">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
+            <img
+              src="/logo.jpg"
+              alt="Logo"
+              className="w-10 h-10 rounded-xl object-cover border border-slate-700/50"
+              referrerPolicy="no-referrer"
+            />
             <div>
               <h2 className="font-extrabold text-sm tracking-wide text-white leading-tight uppercase truncate max-w-[120px]">
                 {db.settings.shopName || 'Wholesale POS'}
