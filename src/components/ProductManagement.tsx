@@ -260,22 +260,52 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
   };
 
   // Simple CSV Export Download Trigger
-  const handleExportCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "ID,Product Name,Barcode,SKU,Cost Price,Sale Price,Wholesale Price,Quantity,Minimum Stock,Unit\n";
-    
-    products.forEach(p => {
-      csvContent += `"${p.id}","${p.name}","${p.barcode}","${p.sku}",${p.costPrice},${p.salePrice},${p.wholesalePrice},${p.quantity},${p.minStock},"${p.unit}"\n`;
-    });
+  const handleExportCSV = async () => {
+    try {
+      let csvContent = "ID,Product Name,Barcode,SKU,Cost Price,Sale Price,Wholesale Price,Quantity,Minimum Stock,Unit\n";
+      
+      products.forEach(p => {
+        const escapedName = p.name.replace(/"/g, '""');
+        const escapedUnit = p.unit.replace(/"/g, '""');
+        csvContent += `"${p.id}","${escapedName}","${p.barcode}","${p.sku}",${p.costPrice},${p.salePrice},${p.wholesalePrice},${p.quantity},${p.minStock},"${escapedUnit}"\n`;
+      });
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "retail_products_catalog.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    addLog('Export Catalog', 'Downloaded physical CSV backup spreadsheet of products checklist');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `retail_products_catalog_${timestamp}.csv`;
+
+      if (Capacitor.isNativePlatform()) {
+        const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+        const { Share } = await import('@capacitor/share');
+
+        const writeResult = await Filesystem.writeFile({
+          path: fileName,
+          data: csvContent,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8
+        });
+
+        await Share.share({
+          title: 'Product Catalog Export',
+          text: `Product SKU catalog CSV compiled on ${new Date().toLocaleDateString()}`,
+          url: writeResult.uri,
+          dialogTitle: 'Share Product Catalog CSV'
+        });
+      } else {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "retail_products_catalog.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      addLog('Export Catalog', 'Downloaded physical CSV backup spreadsheet of products checklist');
+    } catch (err: any) {
+      alert(`Export failed: ${err.message}`);
+    }
   };
 
   // Bulk CSV Mock Import Action

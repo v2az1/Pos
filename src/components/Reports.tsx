@@ -40,40 +40,73 @@ export default function Reports({ db }: ReportsProps) {
   const anticipatedRetailProfit = inventoryValuationSales - inventoryValuationCost;
 
   // Simple CSV Downloader function
-  const handleDownloadCSVReport = () => {
-    let csv = "data:text/csv;charset=utf-8,";
-    
-    if (activeReportType === 'sales') {
-      csv += "Invoice No,Customer,Date,Payment Channel,Tax Collected,Gross Value,Status\n";
-      sales.forEach(s => {
-        const custName = customers.find(c => c.id === s.customerId)?.name || 'Walk-In';
-        csv += `"${s.invoiceNo}","${custName}","${s.date}","${s.paymentMethod}",${s.tax},${s.grandTotal},"${s.status}"\n`;
-      });
-    } else if (activeReportType === 'inventory') {
-      csv += "SKU,Product Name,Remaining Qty,Unit,Cost Value,Retail Value,Anticipated Profit\n";
-      products.forEach(p => {
-        csv += `"${p.sku}","${p.name}",${p.quantity},"${p.unit}",${p.costPrice * p.quantity},${p.salePrice * p.quantity},${(p.salePrice - p.costPrice) * p.quantity}\n`;
-      });
-    } else if (activeReportType === 'expense') {
-      csv += "Expenditure Title,Category,Date,Paid Out\n";
-      expenses.forEach(e => {
-        csv += `"${e.title}","${e.category}","${e.date}",${e.amount}\n`;
-      });
-    } else {
-      csv += "Record,Statistic,Net Aggregate Value\n";
-      csv += `General,Gross Sales Volume,${grossSalesVolume}\n`;
-      csv += `General,Gross Profit,${grossProfit}\n`;
-      csv += `General,Expenses Accumulations,${totalExpenses}\n`;
-      csv += `General,Net Store Profit,${netProfitBreakdown}\n`;
-    }
+  const handleDownloadCSVReport = async () => {
+    try {
+      let csvContent = "";
+      
+      if (activeReportType === 'sales') {
+        csvContent += "Invoice No,Customer,Date,Payment Channel,Tax Collected,Gross Value,Status\n";
+        sales.forEach(s => {
+          const custName = (customers.find(c => c.id === s.customerId)?.name || 'Walk-In').replace(/"/g, '""');
+          csvContent += `"${s.invoiceNo}","${custName}","${s.date}","${s.paymentMethod}",${s.tax},${s.grandTotal},"${s.status}"\n`;
+        });
+      } else if (activeReportType === 'inventory') {
+        csvContent += "SKU,Product Name,Remaining Qty,Unit,Cost Value,Retail Value,Anticipated Profit\n";
+        products.forEach(p => {
+          const escapedName = p.name.replace(/"/g, '""');
+          const escapedUnit = p.unit.replace(/"/g, '""');
+          csvContent += `"${p.sku}","${escapedName}",${p.quantity},"${escapedUnit}",${p.costPrice * p.quantity},${p.salePrice * p.quantity},${(p.salePrice - p.costPrice) * p.quantity}\n`;
+        });
+      } else if (activeReportType === 'expense') {
+        csvContent += "Expenditure Title,Category,Date,Paid Out\n";
+        expenses.forEach(e => {
+          const escapedTitle = e.title.replace(/"/g, '""');
+          const escapedCat = e.category.replace(/"/g, '""');
+          csvContent += `"${escapedTitle}","${escapedCat}","${e.date}",${e.amount}\n`;
+        });
+      } else {
+        csvContent += "Record,Statistic,Net Aggregate Value\n";
+        csvContent += `General,Gross Sales Volume,${grossSalesVolume}\n`;
+        csvContent += `General,Gross Profit,${grossProfit}\n`;
+        csvContent += `General,Expenses Accumulations,${totalExpenses}\n`;
+        csvContent += `General,Net Store Profit,${netProfitBreakdown}\n`;
+      }
 
-    const encoded = encodeURI(csv);
-    const link = document.createElement("a");
-    link.setAttribute("href", encoded);
-    link.setAttribute("download", `store_${activeReportType}_report.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `store_${activeReportType}_report_${timestamp}.csv`;
+
+      const { Capacitor } = await import('@capacitor/core');
+      if (Capacitor.isNativePlatform()) {
+        const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+        const { Share } = await import('@capacitor/share');
+
+        const writeResult = await Filesystem.writeFile({
+          path: fileName,
+          data: csvContent,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8
+        });
+
+        await Share.share({
+          title: `Store ${activeReportType.toUpperCase()} Report`,
+          text: `POS terminal ${activeReportType} analytical report CSV compiled on ${new Date().toLocaleDateString()}`,
+          url: writeResult.uri,
+          dialogTitle: `Share ${activeReportType.toUpperCase()} Report CSV`
+        });
+      } else {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `store_${activeReportType}_report.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err: any) {
+      alert(`Report export failed: ${err.message}`);
+    }
   };
 
   return (
