@@ -143,6 +143,7 @@ export interface ShopSettings {
   receiptFooter: string;
   invoicePrefix: string;
   theme: 'light' | 'dark';
+  language?: 'en' | 'ur';
 }
 
 export interface BackupInfo {

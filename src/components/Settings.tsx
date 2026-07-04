@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  Settings as SettingsIcon, Save, Store, Shield, RefreshCw, Key, Image, Moon, Sun
+  Settings as SettingsIcon, Save, Store, Shield, RefreshCw, Key, Image, Moon, Sun, Globe
 } from 'lucide-react';
 import { DBState, addLog } from '../db';
 import { ShopSettings } from '../types';
+import { translations } from '../lib/translations';
 
 interface SettingsProps {
   db: DBState;
@@ -25,6 +26,9 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
 
   const [msg, setMsg] = useState<string | null>(null);
 
+  const currentLang = formData.language || 'en';
+  const t = translations[currentLang];
+
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveDB({
@@ -32,7 +36,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
       settings: formData
     });
     addLog('Settings Updated', 'Altered standard business shop credentials or tax configuration');
-    setMsg('Store settings saved successfully!');
+    setMsg(formData.language === 'ur' ? 'اسٹور کی سیٹنگز کامیابی سے محفوظ ہو گئیں!' : 'Store settings saved successfully!');
     setTimeout(() => setMsg(null), 3000);
   };
 
@@ -66,8 +70,8 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Software Station Parameters</h1>
-        <p className="text-sm text-slate-400">Configure receipt printout details, custom currency markers, and local credentials security.</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{t.software_parameters}</h1>
+        <p className="text-sm text-slate-400">{t.configure_receipt}</p>
       </div>
 
       {msg && (
@@ -81,12 +85,12 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
         {/* SHOP METRICS FORM */}
         <form onSubmit={handleSaveSettings} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border shadow-sm space-y-4">
           <h3 className="font-extrabold text-slate-850 dark:text-white text-base flex items-center gap-1.5 border-b pb-3 mb-4">
-            <Store className="w-5 h-5 text-indigo-550" /> Shop Branding Details
+            <Store className="w-5 h-5 text-indigo-550" /> {t.shop_branding}
           </h3>
 
           <div className="space-y-3.5 text-xs font-medium">
             <div>
-              <label className="block text-slate-400 font-bold mb-1 uppercase">SHOP DISPLAY TITLE *</label>
+              <label className="block text-slate-400 font-bold mb-1 uppercase">{t.shop_title}</label>
               <input
                 type="text"
                 required
@@ -98,7 +102,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold mb-1 uppercase">SHOP TELEPHONE LINE *</label>
+              <label className="block text-slate-400 font-bold mb-1 uppercase">{t.shop_phone}</label>
               <input
                 type="text"
                 required
@@ -110,7 +114,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold mb-1 uppercase">PHYSICAL LOCATION ADDRESS *</label>
+              <label className="block text-slate-400 font-bold mb-1 uppercase">{t.physical_address}</label>
               <textarea
                 required
                 value={formData.address}
@@ -123,7 +127,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
 
             <div className="grid grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-slate-400 font-bold mb-1 uppercase">CURRENCY SYMBOL</label>
+                <label className="block text-slate-400 font-bold mb-1 uppercase">{t.currency_symbol}</label>
                 <select
                   value={formData.currency}
                   onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
@@ -138,7 +142,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold mb-1 uppercase">INVOICE NO PREFIX</label>
+                <label className="block text-slate-400 font-bold mb-1 uppercase">{t.invoice_prefix}</label>
                 <input
                   type="text"
                   value={formData.invoicePrefix}
@@ -151,7 +155,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
 
             <div className="grid grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-slate-400 font-bold mb-1 uppercase">DEFAULT TAX RATE %</label>
+                <label className="block text-slate-400 font-bold mb-1 uppercase">{t.default_tax}</label>
                 <input
                   type="number"
                   value={formData.taxRate}
@@ -163,7 +167,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
 
               {/* Theme Settings toggle inside settings */}
               <div>
-                <label className="block text-slate-400 font-bold mb-1 uppercase">DISPLAY INTERFACE THEME</label>
+                <label className="block text-slate-400 font-bold mb-1 uppercase">{t.display_theme}</label>
                 <button
                   type="button"
                   onClick={onToggleTheme}
@@ -183,7 +187,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold mb-1 uppercase">RECEIPT FOOTER MESSAGE</label>
+              <label className="block text-slate-400 font-bold mb-1 uppercase">{t.receipt_footer}</label>
               <input
                 type="text"
                 value={formData.receiptFooter}
@@ -192,13 +196,29 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
                 placeholder="Thank you for shopping with us!"
               />
             </div>
+
+            {/* Language Settings Selection Block */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-750/50 space-y-2 mt-2">
+              <label className="block text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Globe className="w-4 h-4" /> {t.language}
+              </label>
+              <select
+                value={formData.language || 'en'}
+                onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value as any }))}
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value="en">English (UK/US)</option>
+                <option value="ur">اردو (Urdu)</option>
+              </select>
+              <span className="block text-[10px] text-slate-400 leading-tight">Shifts full platform terminologies, layout direction cues, and printed receipt outputs into Urdu text instantly.</span>
+            </div>
           </div>
 
           <button
             type="submit"
             className="w-full py-3 mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5"
           >
-            <Save className="w-4.5 h-4.5" /> Save Shop Branding Settings
+            <Save className="w-4.5 h-4.5" /> {t.save_branding}
           </button>
         </form>
 

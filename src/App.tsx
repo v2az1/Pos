@@ -6,8 +6,9 @@ import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, ShoppingBag, 
   History, DollarSign, BookOpen, BarChart3, Settings as SettingsIcon, 
   Database, LogOut, Sun, Moon, Bell, Shield, MapPin, PhoneCall,
-  Menu, X, Info
+  Menu, X, Info, Globe
 } from 'lucide-react';
+import { translations } from './lib/translations';
 
 // Components imports
 import AdminLogin from './components/AdminLogin';
@@ -25,6 +26,8 @@ import { initCapacitorNative } from './lib/capacitor';
 
 export default function App() {
   const [db, setDb] = useState<DBState>(() => getDB());
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('REMEMBER_LOGIN') === 'true';
   });
@@ -94,6 +97,19 @@ export default function App() {
     });
   };
 
+  const handleToggleLanguage = () => {
+    const nextLang = currentLang === 'en' ? 'ur' : 'en';
+    const updatedSettings = {
+      ...db.settings,
+      language: nextLang as 'en' | 'ur'
+    };
+    handleSaveDB({
+      ...db,
+      settings: updatedSettings
+    });
+    addLog('Language Changed', `Switched software station language to ${nextLang === 'ur' ? 'Urdu' : 'English'}`);
+  };
+
   if (!isLoggedIn) {
     return <AdminLogin user={db.user} onLoginSuccess={handleLoginSuccess} />;
   }
@@ -102,7 +118,7 @@ export default function App() {
   const lowStockCount = db.products.filter(p => p.quantity <= p.minStock).length;
 
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition duration-150 font-sans antialiased`} id="app-workspace">
+    <div dir={currentLang === 'ur' ? 'rtl' : 'ltr'} className={`min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition duration-150 font-sans antialiased`} id="app-workspace">
       
       {/* MOBILE HEADER BAR (Only visible on mobile screens) */}
       <div className="md:hidden flex items-center justify-between px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] bg-slate-900 border-b border-slate-800 text-white print:hidden shrink-0">
@@ -187,23 +203,23 @@ export default function App() {
               {lowStockCount > 0 && (
                 <div className="mx-4 my-3 p-2.5 bg-amber-950/20 border border-amber-900/30 rounded-xl text-amber-500 text-[10px] font-bold flex items-center gap-2">
                   <Bell className="w-4 h-4 text-amber-500 animate-bounce" />
-                  <span>{lowStockCount} Products are Low Stock!</span>
+                  <span>{t.low_stock_warn.replace('{count}', String(lowStockCount))}</span>
                 </div>
               )}
 
               {/* Drawer Navigation Links */}
               <nav className="p-3 space-y-1 max-h-[calc(100vh-220px)] overflow-y-auto">
                 {[
-                  { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
-                  { id: 'pos', label: 'POS Terminal Invoicing', icon: ShoppingCart },
-                  { id: 'products', label: 'Product Catalog', icon: Package },
-                  { id: 'sales', label: 'Sales Records Archive', icon: History },
-                  { id: 'expenses', label: 'Expense Tracker', icon: DollarSign },
-                  { id: 'ledgers', label: 'Financial Ledgers', icon: BookOpen },
-                  { id: 'reports', label: 'Analytical Reports', icon: BarChart3 },
-                  { id: 'backups', label: 'Offline Backups', icon: Database },
-                  { id: 'settings', label: 'Store Parameters', icon: SettingsIcon },
-                  { id: 'about', label: 'About & Developer', icon: Info },
+                  { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
+                  { id: 'pos', label: t.pos, icon: ShoppingCart },
+                  { id: 'products', label: t.products, icon: Package },
+                  { id: 'sales', label: t.sales, icon: History },
+                  { id: 'expenses', label: t.expenses, icon: DollarSign },
+                  { id: 'ledgers', label: t.ledgers, icon: BookOpen },
+                  { id: 'reports', label: t.reports, icon: BarChart3 },
+                  { id: 'backups', label: t.backups, icon: Database },
+                  { id: 'settings', label: t.settings, icon: SettingsIcon },
+                  { id: 'about', label: t.about, icon: Info },
                 ].map((menu) => {
                   const Icon = menu.icon;
                   const isActive = activeView === menu.id;
@@ -215,11 +231,11 @@ export default function App() {
                         setActiveView(menu.id);
                         setIsMobileMenuOpen(false);
                       }}
-                      className={`w-full py-3 px-4 rounded-xl text-left text-xs font-bold transition flex items-center justify-between group ${
+                      className={`w-full py-3 px-4 rounded-xl text-xs font-bold transition flex items-center justify-between group ${
                         isActive 
                           ? 'bg-indigo-600 text-white shadow-md' 
                           : 'hover:bg-slate-800 hover:text-white'
-                      }`}
+                      } ${currentLang === 'ur' ? 'text-right' : 'text-left'}`}
                     >
                       <span className="flex items-center gap-3">
                         <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
@@ -271,7 +287,7 @@ export default function App() {
               </h2>
               <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-emerald-400">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                STATION ACTIVE (OFFLINE)
+                {t.active_station}
               </span>
             </div>
           </div>
@@ -280,23 +296,23 @@ export default function App() {
           {lowStockCount > 0 && (
             <div className="mx-4 my-3 p-2.5 bg-amber-950/20 border border-amber-900/30 rounded-xl text-amber-500 text-[10.5px] font-bold flex items-center gap-2">
               <Bell className="w-4 h-4 text-amber-500 animate-bounce" />
-              <span>{lowStockCount} Products are Out/Low Stock!</span>
+              <span>{t.low_stock_warn.replace('{count}', String(lowStockCount))}</span>
             </div>
           )}
 
           {/* Nav groups */}
           <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]" id="nav-group">
             {[
-              { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
-              { id: 'pos', label: 'POS Terminal Invoicing', icon: ShoppingCart },
-              { id: 'products', label: 'Product Catalog', icon: Package },
-              { id: 'sales', label: 'Sales Records Archive', icon: History },
-              { id: 'expenses', label: 'Expense Tracker', icon: DollarSign },
-              { id: 'ledgers', label: 'Financial Ledgers', icon: BookOpen },
-              { id: 'reports', label: 'Analytical Reports', icon: BarChart3 },
-              { id: 'backups', label: 'Offline Backups', icon: Database },
-              { id: 'settings', label: 'Store Parameters', icon: SettingsIcon },
-              { id: 'about', label: 'About & Developer', icon: Info },
+              { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
+              { id: 'pos', label: t.pos, icon: ShoppingCart },
+              { id: 'products', label: t.products, icon: Package },
+              { id: 'sales', label: t.sales, icon: History },
+              { id: 'expenses', label: t.expenses, icon: DollarSign },
+              { id: 'ledgers', label: t.ledgers, icon: BookOpen },
+              { id: 'reports', label: t.reports, icon: BarChart3 },
+              { id: 'backups', label: t.backups, icon: Database },
+              { id: 'settings', label: t.settings, icon: SettingsIcon },
+              { id: 'about', label: t.about, icon: Info },
             ].map((menu) => {
               const Icon = menu.icon;
               const isActive = activeView === menu.id;
@@ -305,7 +321,7 @@ export default function App() {
                 <button
                   key={menu.id}
                   onClick={() => setActiveView(menu.id)}
-                  className={`w-full py-2.5 px-3.5 rounded-xl text-left text-xs font-bold transition flex items-center justify-between group ${isActive ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}
+                  className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-between group ${isActive ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'} ${currentLang === 'ur' ? 'text-right' : 'text-left'}`}
                 >
                   <span className="flex items-center gap-2.5">
                     <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-white' : 'text-slate-450 group-hover:text-indigo-400'}`} />
@@ -335,9 +351,9 @@ export default function App() {
 
           <button
             onClick={handleLogout}
-            className="w-full py-2 bg-slate-800 hover:bg-rose-950/20 hover:text-rose-400 text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-slate-700/60"
+            className="w-full py-2.5 bg-slate-800 hover:bg-rose-950/20 hover:text-rose-400 text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-slate-700/60"
           >
-            <LogOut className="w-4 h-4 text-rose-500" /> Close Station
+            <LogOut className="w-4 h-4 text-rose-500" /> {t.close_station}
           </button>
         </div>
       </aside>
@@ -350,26 +366,36 @@ export default function App() {
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate">
               <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" /> 
-              <span className="hidden sm:inline">Status:</span>
+              <span className="hidden sm:inline">{t.status}:</span>
               <strong className="text-indigo-600 dark:text-indigo-400 truncate">
-                {activeView === 'dashboard' ? 'Dashboard Overview' :
-                 activeView === 'pos' ? 'POS Terminal Invoicing' :
-                 activeView === 'products' ? 'Product Catalog' :
-                 activeView === 'sales' ? 'Sales Records Archive' :
-                 activeView === 'expenses' ? 'Expense Tracker' :
-                 activeView === 'ledgers' ? 'Financial Ledgers' :
-                 activeView === 'reports' ? 'Analytical Reports' :
-                 activeView === 'backups' ? 'Offline Backups' :
-                 activeView === 'about' ? 'About & Developer' :
-                 'Store Parameters'}
+                {activeView === 'dashboard' ? t.dashboard :
+                 activeView === 'pos' ? t.pos :
+                 activeView === 'products' ? t.products :
+                 activeView === 'sales' ? t.sales :
+                 activeView === 'expenses' ? t.expenses :
+                 activeView === 'ledgers' ? t.ledgers :
+                 activeView === 'reports' ? t.reports :
+                 activeView === 'backups' ? t.backups :
+                 activeView === 'about' ? t.about :
+                 t.settings}
               </strong>
             </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 text-xs font-bold select-none text-slate-600 dark:text-slate-400">
+            {/* Quick Language Toggle */}
+            <button
+              onClick={handleToggleLanguage}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-extrabold transition cursor-pointer active:scale-95"
+              title="Toggle Language / زبان تبدیل کریں"
+            >
+              <Globe className="w-3.5 h-3.5 text-indigo-500" />
+              <span>{currentLang === 'en' ? 'اردو' : 'English'}</span>
+            </button>
+
             {/* Clock */}
             <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 sm:px-3 py-1.5 rounded-xl font-mono text-indigo-600 dark:text-indigo-450">
-              {currentTime || 'Loading...'}
+              {currentTime || t.loading}
             </div>
             
             {/* Shop Contacts summary */}
@@ -418,6 +444,7 @@ export default function App() {
             {activeView === 'ledgers' && (
               <Ledgers 
                 db={db} 
+                onSaveDB={handleSaveDB}
               />
             )}
             {activeView === 'reports' && (

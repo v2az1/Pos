@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Barcode, Trash2, Tag, Percent, Info, ShoppingCart, 
   User, Check, DollarSign, ListFilter, Play, Bookmark, FileText, ChevronRight, Image,
-  AlertTriangle, X, Package, Printer
+  AlertTriangle, X, Package, Printer, UserPlus, Sparkles
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { DBState, addLog } from '../db';
@@ -11,6 +11,7 @@ import { triggerHaptic } from '../lib/capacitor';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { translations } from '../lib/translations';
 
 interface POSBillingProps {
   db: DBState;
@@ -21,6 +22,9 @@ interface POSBillingProps {
 export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps) {
   const { products, customers, settings, holdCarts } = db;
   const currency = settings.currency;
+  
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
 
   // Active customer
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('cust-1'); // Walk-In default
@@ -86,6 +90,75 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
     setTimeout(() => {
       setToast(prev => prev?.message === message ? null : prev);
     }, 4000);
+  };
+
+  // New Customer Form State (for quick register in POS)
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustAddress, setNewCustAddress] = useState('');
+  const [newCustEmail, setNewCustEmail] = useState('');
+  const [newCustCNIC, setNewCustCNIC] = useState('');
+  const [newCustOpeningBal, setNewCustOpeningBal] = useState('');
+
+  const handleAddNewCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustName.trim()) {
+      triggerToast('Please enter a valid customer name.', 'error', 'Error');
+      return;
+    }
+
+    const openingBal = parseFloat(newCustOpeningBal) || 0;
+    const newId = `cust-${Date.now()}`;
+
+    const newCustomer: Customer = {
+      id: newId,
+      name: newCustName.trim(),
+      phone: newCustPhone.trim() || 'N/A',
+      address: newCustAddress.trim() || 'N/A',
+      email: newCustEmail.trim() || 'N/A',
+      cnic: newCustCNIC.trim() || 'N/A',
+      openingBalance: openingBal,
+      currentBalance: openingBal
+    };
+
+    const updatedCustomers = [...customers, newCustomer];
+
+    // Create opening ledger entry if non-zero balance is set
+    let updatedLedgers = [...db.ledgers];
+    if (openingBal !== 0) {
+      updatedLedgers.push({
+        id: `ldg-${Date.now()}`,
+        accountType: 'customer',
+        accountId: newId,
+        type: openingBal > 0 ? 'debit' : 'credit',
+        amount: Math.abs(openingBal),
+        balance: openingBal,
+        date: new Date().toISOString(),
+        description: `Opening credit ledger for newly registered customer: ${newCustName.trim()}`
+      });
+    }
+
+    onSaveDB({
+      ...db,
+      customers: updatedCustomers,
+      ledgers: updatedLedgers
+    });
+
+    addLog('Customer Add', `Registered client customer from POS station checkout: "${newCustName.trim()}"`);
+    
+    // Auto-select the newly added customer!
+    setSelectedCustomerId(newId);
+
+    // Reset fields
+    setNewCustName('');
+    setNewCustPhone('');
+    setNewCustAddress('');
+    setNewCustEmail('');
+    setNewCustCNIC('');
+    setNewCustOpeningBal('');
+    setShowAddCustomerModal(false);
+    triggerToast(`Customer "${newCustomer.name}" successfully registered!`, 'success', 'Customer Added');
   };
 
   // Input refs for keyboard shortcuts
@@ -1067,14 +1140,24 @@ ${settings.receiptFooter}
       {/* RIGHT SIDE: Shopping Cart panel (5 cols out of 12) */}
       <div className={`lg:col-span-5 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[560px] ${mobileTab === 'cart' ? 'block' : 'hidden lg:flex'}`}>
         
-        {/* Cart Upper Header: Customer selector */}
+         {/* Cart Upper Header: Customer selector */}
         <div className="space-y-3.5">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 rounded-xl">
               <User className="w-4 h-4" />
             </div>
-            <div className="flex-1">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account Client</label>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account Client</label>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomerModal(true)}
+                  className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Quick Add</span>
+                </button>
+              </div>
               <select
                 ref={customerSelectRef}
                 value={selectedCustomerId}
@@ -1438,22 +1521,22 @@ ${settings.receiptFooter}
             
             {/* Top triggers inside modal */}
             <div className="flex items-center justify-between border-b pb-4 mb-5 print:hidden">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Digital Invoice Print Station</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.digital_invoice}</span>
               <div className="flex gap-2 text-xs">
                 <select 
                   value={receiptSize} 
                   onChange={(e) => setReceiptSize(e.target.value as any)} 
-                  className="bg-slate-100 border rounded p-1 text-[11px] font-bold"
+                  className="bg-slate-100 border rounded p-1 text-[11px] font-bold dark:text-slate-800"
                 >
-                  <option value="58mm">Thermal 58mm</option>
-                  <option value="80mm">Thermal 80mm</option>
-                  <option value="A4">Standard A4 Sheet</option>
+                  <option value="58mm">{t.thermal_58mm}</option>
+                  <option value="80mm">{t.thermal_80mm}</option>
+                  <option value="A4">{t.standard_a4}</option>
                 </select>
                 <button 
                   onClick={() => setShowReceipt(false)} 
                   className="bg-slate-100 text-slate-700 font-bold rounded-lg p-1.5 hover:bg-slate-200 transition text-[11px]"
                 >
-                  Close Receipt
+                  {t.close_receipt}
                 </button>
               </div>
             </div>
@@ -1469,22 +1552,22 @@ ${settings.receiptFooter}
 
               <div className="py-3 leading-snug space-y-1 text-[10px] border-b border-dashed border-slate-350 select-none">
                 <div className="flex justify-between">
-                  <span>Invoice: <strong>#{lastInvoice.invoiceNo}</strong></span>
-                  <span>Date: {new Date(lastInvoice.date).toLocaleDateString()} {new Date(lastInvoice.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                  <span>{t.invoice}: <strong>#{lastInvoice.invoiceNo}</strong></span>
+                  <span>{t.date}: {new Date(lastInvoice.date).toLocaleDateString()} {new Date(lastInvoice.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Customer: {customers.find(c => c.id === lastInvoice.customerId)?.name || 'Walk-In'}</span>
-                  <span>Cashier Station: Station #1</span>
+                  <span>{t.customer}: {customers.find(c => c.id === lastInvoice.customerId)?.name || t.walk_in}</span>
+                  <span>{t.cashier_station}: Station #1</span>
                 </div>
               </div>
 
               {/* Items List */}
               <div className="py-3 border-b border-dashed border-slate-350">
                 <div className="grid grid-cols-12 font-bold mb-1.5 text-[10.5px]">
-                  <span className="col-span-6 truncate">Product Name</span>
-                  <span className="col-span-2 text-center text-slate-500">Qty</span>
-                  <span className="col-span-2 text-right">Price</span>
-                  <span className="col-span-2 text-right">Total</span>
+                  <span className="col-span-6 truncate">{t.product_name}</span>
+                  <span className="col-span-2 text-center text-slate-500">{t.qty}</span>
+                  <span className="col-span-2 text-right">{t.price}</span>
+                  <span className="col-span-2 text-right">{t.total}</span>
                 </div>
 
                 <div className="space-y-1 text-[10.5px]">
@@ -1502,46 +1585,46 @@ ${settings.receiptFooter}
               {/* Aggregation */}
               <div className="py-3 space-y-1 text-right text-[11px] font-medium border-b border-dashed border-slate-350 leading-relaxed">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Subtotal</span>
+                  <span className="text-slate-500">{t.subtotal}</span>
                   <span>{currency} {lastInvoice.subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Sales Tax %</span>
+                  <span className="text-slate-500">{t.sales_tax}</span>
                   <span>{currency} {lastInvoice.tax.toLocaleString()}</span>
                 </div>
                 {lastInvoice.discount > 0 && (
                   <div className="flex justify-between text-rose-650">
-                    <span>Discount Deduction</span>
+                    <span>{t.discount_deduction}</span>
                     <span>-{currency} {lastInvoice.discount.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-xs font-black pt-1">
-                  <span>GRAND TOTAL</span>
+                  <span>{t.grand_total}</span>
                   <span>{currency} {lastInvoice.grandTotal.toLocaleString()}</span>
                 </div>
               </div>
 
               <div className="py-3 text-[10px] space-y-1 border-b border-slate-205">
                 <div className="flex justify-between">
-                  <span>Paid Channels: <strong>{lastInvoice.paymentMethod}</strong></span>
-                  <span>Received Amount: {currency}{lastInvoice.receivedAmount.toLocaleString()}</span>
+                  <span>{t.paid_channels}: <strong>{lastInvoice.paymentMethod}</strong></span>
+                  <span>{t.received_amount}: {currency}{lastInvoice.receivedAmount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-emerald-650 font-bold">
-                  <span>Change Return Balance:</span>
+                  <span>{t.change_return}:</span>
                   <span>{currency}{lastInvoice.changeAmount.toLocaleString()}</span>
                 </div>
               </div>
 
               {lastInvoice.notes && (
                 <div className="py-2.5 text-[9.5px] italic text-slate-500">
-                  Remarks: {lastInvoice.notes}
+                  {t.remarks}: {lastInvoice.notes}
                 </div>
               )}
 
               <div className="text-center pt-4 space-y-1 select-none">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">*** Thank you for shopping ***</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">*** {t.thank_you} ***</p>
                 <p className="text-[9px] leading-normal text-slate-450">{settings.receiptFooter}</p>
-                <p className="text-[8px] text-slate-350 mt-1">POS built completely offline for MS Windows Systems.</p>
+                <p className="text-[8px] text-slate-350 mt-1">{t.pos_offline}</p>
               </div>
 
             </div>
@@ -1550,40 +1633,40 @@ ${settings.receiptFooter}
             <div className="mt-6 space-y-4 print:hidden w-full">
               {/* Save Locally to Folder options */}
               <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-150 dark:border-slate-850 space-y-2">
-                <span className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest text-center">Save Bill / Invoice to folder</span>
+                <span className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest text-center">{t.save_bill}</span>
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
                     onClick={handleSaveInvoiceToFile}
                     title="Save as plain text file"
-                    className="py-2.5 px-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10.5px] font-bold rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 active:scale-98"
+                    className="py-2.5 px-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10.5px] font-bold rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 active:scale-98 cursor-pointer"
                   >
-                    <FileText className="w-3.5 h-3.5" /> <span>Text (.txt)</span>
+                    <FileText className="w-3.5 h-3.5" /> <span>{t.text_file}</span>
                   </button>
                   <button
                     onClick={handleSaveInvoiceAsImage}
                     title="Save as Photo/Image to gallery"
-                    className="py-2.5 px-1 bg-indigo-600 hover:bg-indigo-505 text-white text-[10.5px] font-bold rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 active:scale-98"
+                    className="py-2.5 px-1 bg-indigo-600 hover:bg-indigo-505 text-white text-[10.5px] font-bold rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 active:scale-98 cursor-pointer"
                   >
-                    <Image className="w-3.5 h-3.5" /> <span>Image (.png)</span>
+                    <Image className="w-3.5 h-3.5" /> <span>{t.image_file}</span>
                   </button>
                 </div>
                 <p className="text-[9.5px] text-slate-400 dark:text-slate-500 text-center select-none pt-0.5">
-                  Offline Device Friendly: Instantly saves the invoice file directly to your downloads / tablet local folders.
+                  {t.offline_device_friendly}
                 </p>
               </div>
 
               <button
                 onClick={handleTriggerPrint}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 text-xs tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 text-xs tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Printer className="w-4 h-4" /> Print Thermal Voucher/A4
+                <Printer className="w-4 h-4" /> {t.print_thermal}
               </button>
               
               <button
                 onClick={() => setShowReceipt(false)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 text-xs rounded-xl transition"
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 text-xs rounded-xl transition cursor-pointer"
               >
-                Close Station Receipt View
+                {t.close_receipt_view}
               </button>
             </div>
 
@@ -1641,6 +1724,120 @@ ${settings.receiptFooter}
           <div className="text-xs">
             {toast.title && <span className="text-[9px] block opacity-85 uppercase tracking-widest">{toast.title}</span>}
             <span className="text-sm">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: QUICK REGISTER NEW CUSTOMER IN POS */}
+      {showAddCustomerModal && (
+        <div className="fixed inset-0 bg-slate-950/70 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            {/* Modal header */}
+            <div className="p-4 px-5 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="font-extrabold text-slate-800 dark:text-white text-sm uppercase tracking-wider">Quick Register Customer</h3>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowAddCustomerModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-700 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <form onSubmit={handleAddNewCustomer} className="p-5 space-y-4 overflow-y-auto">
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name / Business Title <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Al-Madina Wholesale Distributors"
+                  value={newCustName}
+                  onChange={(e) => setNewCustName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-600 transition"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 0300-1234567"
+                    value={newCustPhone}
+                    onChange={(e) => setNewCustPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-600 transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CNIC Identifier</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 42101-1234567-1"
+                    value={newCustCNIC}
+                    onChange={(e) => setNewCustCNIC(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-650 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                <input
+                  type="email"
+                  placeholder="e.g. client@domain.com"
+                  value={newCustEmail}
+                  onChange={(e) => setNewCustEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-650 transition"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Physical Address Details</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Shop # 24, Main Wholesale Market, Karachi"
+                  value={newCustAddress}
+                  onChange={(e) => setNewCustAddress(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-650 transition"
+                />
+              </div>
+
+              <div className="space-y-1 border-t border-slate-100 dark:border-slate-700/60 pt-3">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Initial Ledger Balance ({currency})</label>
+                  <span className="text-[9px] text-indigo-500 font-bold flex items-center gap-0.5"><Sparkles className="w-3 h-3" /> Ledger Debt</span>
+                </div>
+                <input
+                  type="number"
+                  placeholder="e.g. 5000 (if they already owe money)"
+                  value={newCustOpeningBal}
+                  onChange={(e) => setNewCustOpeningBal(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-600 transition"
+                />
+                <p className="text-[9.5px] text-slate-400 dark:text-slate-550 leading-tight">Enter positive numbers if this customer has a balance to pay off. Use 0 for cash-only Walk-In setups.</p>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomerModal(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-650 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition"
+                >
+                  Register Customer
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
