@@ -104,7 +104,7 @@ export interface Sale {
   tax: number;
   discount: number;
   grandTotal: number;
-  paymentMethod: 'Cash' | 'Card' | 'Bank Transfer' | 'JazzCash' | 'EasyPaisa' | 'Mixed';
+  paymentMethod: 'Cash' | 'Card' | 'Bank Transfer' | 'JazzCash' | 'EasyPaisa' | 'Mixed' | 'Credit';
   paymentDetails?: string;
   receivedAmount: number;
   changeAmount: number;

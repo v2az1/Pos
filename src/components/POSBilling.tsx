@@ -346,8 +346,19 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
   const grandTotal = Math.max(subtotal + totalTaxAmount - overallDiscount, 0);
 
   const handleOpenPayment = () => {
+    setPaymentMethod('Cash');
     setReceivedAmount(grandTotal.toString());
+    setPaymentDetails('');
     setShowPayModal(true);
+  };
+
+  const handlePaymentMethodChange = (method: Sale['paymentMethod']) => {
+    setPaymentMethod(method);
+    if (method === 'Credit') {
+      setReceivedAmount('0');
+    } else {
+      setReceivedAmount(grandTotal.toString());
+    }
   };
 
   // Clear / Cancel POS
@@ -545,10 +556,14 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
 
   // Submit payment order
   const handleConfirmCheckout = () => {
-    const recNum = parseFloat(receivedAmount);
-    if (isNaN(recNum) || recNum < grandTotal) {
-      if (paymentMethod === 'Cash' || paymentMethod === 'Mixed') {
-        triggerToast('Received amount cannot be less than Grand Total unless charging a credit account.', 'error', 'Invalid Amount');
+    const recNum = parseFloat(receivedAmount) || 0;
+    if (recNum < grandTotal) {
+      if (selectedCustomerId === 'cust-1') {
+        triggerToast('Walk-In customers cannot purchase on credit. Please register or select an Account Client.', 'error', 'Invalid Credit Sale');
+        return;
+      }
+      if (paymentMethod !== 'Credit' && paymentMethod !== 'Mixed') {
+        triggerToast('For outstanding or partial payments, please select Credit or Mixed as the Payment Method.', 'warning', 'Adjust Payment Method');
         return;
       }
     }
@@ -1453,12 +1468,30 @@ ${settings.receiptFooter}
               </div>
             </div>
 
-            <div className="space-y-3 pt-1">
-              <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-widest">Active Channels</label>
-              <div className="py-2.5 px-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-500/20 flex items-center justify-between">
-                <span>Cash Payment Only</span>
-                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] uppercase rounded-lg border border-emerald-500/20 font-bold">Active</span>
-              </div>
+            <div className="space-y-1.5 pt-1">
+              <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-widest">{t.payment_method}</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => handlePaymentMethodChange(e.target.value as any)}
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              >
+                <option value="Cash">{currentLang === 'ur' ? 'نقد (Cash)' : 'Cash'}</option>
+                <option value="Credit">{currentLang === 'ur' ? 'ادھار / کریڈٹ (Credit / Pay Later)' : 'Credit / Pay Later'}</option>
+                <option value="Bank Transfer">{currentLang === 'ur' ? 'بینک ٹرانسفر (Bank Transfer)' : 'Bank Transfer'}</option>
+                <option value="JazzCash">JazzCash</option>
+                <option value="EasyPaisa">EasyPaisa</option>
+                <option value="Mixed">{currentLang === 'ur' ? 'مکسڈ (Mixed Payment)' : 'Mixed Payment'}</option>
+              </select>
+
+              {paymentMethod === 'Credit' && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-500/20 rounded-xl text-[11px] text-amber-700 dark:text-amber-400 font-medium leading-tight select-none">
+                  {currentLang === 'ur' ? (
+                    <span>قرضہ/بقیہ رقم اس گاہک کے لیجر کھاتہ میں خود بخود درج کر دی جائے گی۔</span>
+                  ) : (
+                    <span>The unpaid balance will be automatically charged to this customer's account ledger liability.</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Inputs block */}
@@ -1488,7 +1521,7 @@ ${settings.receiptFooter}
               <label className="block text-xs font-bold text-slate-400 mb-1">TRANSACTION NO / CHEQUE REF (IF ANY)</label>
               <input
                 type="text"
-                placeholder="Transfer ID, Card batch code, Cheque reference..."
+                placeholder="Transfer ID, Online reference, Cheque reference..."
                 value={paymentDetails}
                 onChange={(e) => setPaymentDetails(e.target.value)}
                 className="w-full border border-slate-200 dark:border-slate-703 bg-transparent rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400"
