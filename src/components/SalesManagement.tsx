@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { DBState, addLog } from '../db';
 import { Sale } from '../types';
+import { translations } from '../lib/translations';
 
 interface SalesManagementProps {
   db: DBState;
@@ -13,6 +14,8 @@ interface SalesManagementProps {
 export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) {
   const { sales, customers, settings } = db;
   const currency = settings.currency;
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
 
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'All' | 'Today' | 'Week' | 'Month'>('All');
@@ -123,8 +126,8 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
       
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Sales Invoice Archive</h1>
-        <p className="text-sm text-slate-400">Review historic receipts, reprint checkout vouchers, and process consumer refunds.</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{t.sales_history}</h1>
+        <p className="text-sm text-slate-400">{t.view_and_manage_sales}</p>
       </div>
 
       {/* Timeline Controls */}
@@ -133,7 +136,7 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
           <Search className="absolute left-3 top-3 w-4.5 h-4.5 text-slate-400" />
           <input
             type="text"
-            placeholder="Search invoice registries by ID or Client name..."
+            placeholder={t.search_sales}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs focus:outline-none rounded-xl"
@@ -141,15 +144,23 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
         </div>
 
         <div className="flex gap-2 text-xs shrink-0 font-bold text-slate-600">
-          {(['All', 'Today', 'Week', 'Month'] as const).map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`px-4 py-2 rounded-xl border transition ${filterType === type ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-transparent border-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200'}`}
-            >
-              {type}
-            </button>
-          ))}
+          {(['All', 'Today', 'Week', 'Month'] as const).map((type) => {
+            const labelMap: Record<string, string> = {
+              All: currentLang === 'ur' ? 'سب' : 'All',
+              Today: currentLang === 'ur' ? 'آج' : 'Today',
+              Week: currentLang === 'ur' ? 'ہفتہ' : 'Week',
+              Month: currentLang === 'ur' ? 'مہینہ' : 'Month'
+            };
+            return (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`px-4 py-2 rounded-xl border transition ${filterType === type ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-transparent border-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200'}`}
+              >
+                {labelMap[type]}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -159,14 +170,14 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
           <table className="min-w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase font-extrabold tracking-wider border-b border-slate-100 dark:border-slate-800">
               <tr>
-                <th className="px-5 py-4">Invoice Voucher ID</th>
-                <th className="px-5 py-4">Client Detail</th>
-                <th className="px-5 py-4">Checkout Date Timestamp</th>
-                <th className="px-5 py-4">Channel</th>
-                <th className="px-5 py-4 text-right">Subtotal</th>
-                <th className="px-5 py-4 text-right">Grand Total Paid</th>
-                <th className="px-5 py-4 text-center">Status</th>
-                <th className="px-5 py-4 text-right">Voucher Operation Actions</th>
+                <th className="px-5 py-4">{t.invoice_no}</th>
+                <th className="px-5 py-4">{t.customer_lbl}</th>
+                <th className="px-5 py-4">{t.date_time}</th>
+                <th className="px-5 py-4">{t.payment_method}</th>
+                <th className="px-5 py-4 text-right">{t.subtotal}</th>
+                <th className="px-5 py-4 text-right">{t.grand_total_lbl}</th>
+                <th className="px-5 py-4 text-center">{t.status_lbl}</th>
+                <th className="px-5 py-4 text-right">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -178,14 +189,19 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
                     </td>
 
                     <td className="px-5 py-3.5 font-semibold text-slate-500">
-                      {customers.find(c => c.id === s.customerId)?.name || 'Walk-In Customer'}
+                      {s.customerId === 'cust-1' ? t.walk_in : (customers.find(c => c.id === s.customerId)?.name || t.walk_in)}
                     </td>
 
                     <td className="px-5 py-3.5 text-slate-500">
                       {new Date(s.date).toLocaleDateString()} {new Date(s.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </td>
 
-                    <td className="px-5 py-3.5 font-bold text-slate-500">{s.paymentMethod}</td>
+                    <td className="px-5 py-3.5 font-bold text-slate-500">
+                      {s.paymentMethod === 'Cash' ? (currentLang === 'ur' ? 'نقد' : 'Cash') :
+                       s.paymentMethod === 'Credit' ? (currentLang === 'ur' ? 'ادھار / کریڈٹ' : 'Credit / Pay Later') :
+                       s.paymentMethod === 'Bank Transfer' ? (currentLang === 'ur' ? 'بینک ٹرانسفر' : 'Bank Transfer') :
+                       s.paymentMethod === 'Mixed' ? (currentLang === 'ur' ? 'مکسڈ' : 'Mixed') : s.paymentMethod}
+                    </td>
 
                     <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{currency} {s.subtotal.toLocaleString()}</td>
 
@@ -193,7 +209,7 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
 
                     <td className="px-5 py-3.5 text-center">
                       <span className={`inline-flex items-center gap-1 font-bold px-2.5 py-0.5 rounded-full text-[10px] ${s.status === 'Returned' ? 'bg-rose-50 text-rose-600 dark:bg-rose-955/20' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-955'}`}>
-                        {s.status === 'Returned' ? 'Refunded' : 'Completed'}
+                        {s.status === 'Returned' ? t.refunded : t.completed}
                       </span>
                     </td>
 
@@ -205,14 +221,14 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
                             onClick={() => handleWholeInvoiceRefund(s)}
                             className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-2 py-1 rounded-lg text-[10.5px] transition duration-150"
                           >
-                            Refund Return
+                            {t.refund_sale}
                           </button>
                         )}
                         <button
                           onClick={() => setActiveReprintSale(s)}
                           className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border px-2 py-1 rounded-lg text-[10.5px] font-bold inline-flex items-center gap-1 transition"
                         >
-                          <Printer className="w-3.5 h-3.5 text-indigo-505" /> Print
+                          <Printer className="w-3.5 h-3.5 text-indigo-505" /> {t.reprint_receipt}
                         </button>
                       </div>
                     </td>

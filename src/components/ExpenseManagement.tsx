@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { DBState, addLog } from '../db';
 import { Expense } from '../types';
+import { translations } from '../lib/translations';
 
 interface ExpenseManagementProps {
   db: DBState;
@@ -13,6 +14,8 @@ interface ExpenseManagementProps {
 export default function ExpenseManagement({ db, onSaveDB }: ExpenseManagementProps) {
   const { expenses, settings } = db;
   const currency = settings.currency;
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | Expense['category']>('All');
@@ -127,14 +130,14 @@ export default function ExpenseManagement({ db, onSaveDB }: ExpenseManagementPro
       {/* Upper header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Expense Registry</h1>
-          <p className="text-sm text-slate-400">Total running store expense accruals: <strong className="text-slate-650 dark:text-slate-200">{currency} {totalExpenseVolume.toLocaleString()}</strong></p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{t.expense_registry}</h1>
+          <p className="text-sm text-slate-400">{currentLang === 'ur' ? `کل اخراجات کا حجم:` : `Total running store expense accruals:`} <strong className="text-slate-650 dark:text-slate-200">{currency} {totalExpenseVolume.toLocaleString()}</strong></p>
         </div>
         <button
           onClick={() => { resetForm(); setShowFormModal(true); }}
           className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition shadow"
         >
-          <Plus className="w-5 h-5" /> Log Expenditure Payout
+          <Plus className="w-5 h-5" /> {t.log_expenditure_payout}
         </button>
       </div>
 
@@ -144,14 +147,22 @@ export default function ExpenseManagement({ db, onSaveDB }: ExpenseManagementPro
           const sum = getCategorySum(cat);
           const percent = totalExpenseVolume > 0 ? Math.round((sum / totalExpenseVolume) * 100) : 0;
 
+          const catTranslationMap: Record<string, string> = {
+            Rent: currentLang === 'ur' ? 'کرایہ' : 'Rent',
+            Electricity: currentLang === 'ur' ? 'بجلی کا بل' : 'Electricity',
+            Internet: currentLang === 'ur' ? 'انٹرنیٹ' : 'Internet',
+            Salary: currentLang === 'ur' ? 'تنخواہ' : 'Salary',
+            Miscellaneous: currentLang === 'ur' ? 'متفرق' : 'Miscellaneous'
+          };
+
           return (
             <div key={cat} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{cat}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{catTranslationMap[cat]}</span>
               <div className="text-base font-black text-slate-800 dark:text-slate-100">{currency} {sum.toLocaleString()}</div>
               <div className="w-full bg-slate-50 dark:bg-slate-900 h-1.5 rounded-full overflow-hidden mt-2">
                 <div className="bg-indigo-500 h-full rounded-full transition-all duration-300" style={{ width: `${percent}%` }}></div>
               </div>
-              <span className="text-[9px] text-slate-400 font-semibold block pt-0.5">{percent}% of spent capital</span>
+              <span className="text-[9px] text-slate-400 font-semibold block pt-0.5">{percent}% {currentLang === 'ur' ? 'کل اخراجات کا حصہ' : 'of spent capital'}</span>
             </div>
           );
         })}
@@ -163,7 +174,7 @@ export default function ExpenseManagement({ db, onSaveDB }: ExpenseManagementPro
           <Search className="absolute left-3 top-3 w-4.5 h-4.5 text-slate-400" />
           <input
             type="text"
-            placeholder="Search bills by title remarks..."
+            placeholder={t.search_bills}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-705/50 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-402 text-xs focus:outline-none"
@@ -175,12 +186,12 @@ export default function ExpenseManagement({ db, onSaveDB }: ExpenseManagementPro
           onChange={(e) => setSelectedCategory(e.target.value as any)}
           className="bg-slate-50 dark:bg-slate-900 border border-slate-200 text-slate-650 text-xs rounded-xl px-4 py-2 font-bold focus:outline-none shrink-0"
         >
-          <option value="All">All Categories</option>
-          <option value="Rent">Rent</option>
-          <option value="Electricity">Electricity</option>
-          <option value="Internet">Internet</option>
-          <option value="Salary">Salary</option>
-          <option value="Miscellaneous">Miscellaneous</option>
+          <option value="All">{t.all_cats}</option>
+          <option value="Rent">{currentLang === 'ur' ? 'کرایہ' : 'Rent'}</option>
+          <option value="Electricity">{currentLang === 'ur' ? 'بجلی کا بل' : 'Electricity'}</option>
+          <option value="Internet">{currentLang === 'ur' ? 'انٹرنیٹ' : 'Internet'}</option>
+          <option value="Salary">{currentLang === 'ur' ? 'تنخواہ' : 'Salary'}</option>
+          <option value="Miscellaneous">{currentLang === 'ur' ? 'متفرق' : 'Miscellaneous'}</option>
         </select>
       </div>
 
@@ -190,12 +201,12 @@ export default function ExpenseManagement({ db, onSaveDB }: ExpenseManagementPro
           <table className="min-w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-855 text-slate-400 uppercase font-extrabold tracking-wider border-b">
               <tr>
-                <th className="px-5 py-4">Expenditure Bill Title</th>
-                <th className="px-5 py-4">Category Section</th>
-                <th className="px-5 py-4">Record Payment Date</th>
-                <th className="px-5 py-2">Detailed Remarks</th>
-                <th className="px-5 py-4 text-right">Debit Paid Amount</th>
-                <th className="px-5 py-4 text-right">Operations Actions</th>
+                <th className="px-5 py-4">{currentLang === 'ur' ? 'اخراجات کا عنوان' : 'Expenditure Bill Title'}</th>
+                <th className="px-5 py-4">{currentLang === 'ur' ? 'کیٹیگری' : 'Category Section'}</th>
+                <th className="px-5 py-4">{t.date_lbl}</th>
+                <th className="px-5 py-2">{currentLang === 'ur' ? 'تفصیل' : 'Detailed Remarks'}</th>
+                <th className="px-5 py-4 text-right">{t.amount_paid}</th>
+                <th className="px-5 py-4 text-right">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-705/30">
@@ -208,7 +219,11 @@ export default function ExpenseManagement({ db, onSaveDB }: ExpenseManagementPro
 
                     <td className="px-5 py-3.5 font-bold uppercase text-[10.5px]">
                       <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400">
-                        {e.category}
+                        {e.category === 'Rent' ? (currentLang === 'ur' ? 'کرایہ' : 'Rent') :
+                         e.category === 'Electricity' ? (currentLang === 'ur' ? 'بجلی' : 'Electricity') :
+                         e.category === 'Internet' ? (currentLang === 'ur' ? 'انٹرنیٹ' : 'Internet') :
+                         e.category === 'Salary' ? (currentLang === 'ur' ? 'تنخواہ' : 'Salary') :
+                         e.category === 'Miscellaneous' ? (currentLang === 'ur' ? 'متفرق' : 'Miscellaneous') : e.category}
                       </span>
                     </td>
 

@@ -84,6 +84,141 @@ export interface TranslationDictionary {
   select_language: string;
   english: string;
   urdu: string;
+
+  // New keys for complete translation of all features in Urdu
+  today_sales: string;
+  days_revenue: string;
+  gross_profit: string;
+  avg_margin: string;
+  total_expenses: string;
+  net_profit: string;
+  total_catalog: string;
+  low_stock: string;
+  items_count: string;
+  weekly_billing_flow: string;
+  compare_gross_profit: string;
+  gross_revenue: string;
+  best_selling_products: string;
+  highest_volume_retail: string;
+  units_shipped: string;
+  no_inventory_shipped: string;
+  generate_complete_shipping_reports: string;
+  critical_stock_alerts: string;
+  products_nearing_depleted: string;
+  all_sufficiently_stocked: string;
+  local_audit_log: string;
+  continuous_background_operations: string;
+  audits_settings: string;
+  refresh_data: string;
+  pos_terminal: string;
+  successful_receipts: string;
+  active_flow_tracking: string;
+
+  // Products
+  product_catalog: string;
+  add_new_product: string;
+  edit_product: string;
+  barcode_sku: string;
+  product_name_lbl: string;
+  category: string;
+  purchase_cost: string;
+  retail_price: string;
+  wholesale_price: string;
+  stock_quantity: string;
+  minimum_alert_stock: string;
+  measuring_unit: string;
+  save_product: string;
+  delete_product: string;
+  search_products: string;
+  all_cats: string;
+  sku: string;
+  stock: string;
+  actions: string;
+  no_products_found: string;
+
+  // Sales
+  sales_history: string;
+  view_and_manage_sales: string;
+  search_sales: string;
+  invoice_no: string;
+  date_time: string;
+  customer_lbl: string;
+  grand_total_lbl: string;
+  status_lbl: string;
+  refunded: string;
+  completed: string;
+  reprint_receipt: string;
+  refund_sale: string;
+  no_sales_recorded: string;
+
+  // Expenses
+  expenses_tracker: string;
+  record_store_disbursements: string;
+  add_expense: string;
+  expense_amount: string;
+  expense_date: string;
+  expense_category: string;
+  expense_description: string;
+  save_expense: string;
+  delete_expense: string;
+  search_expenses: string;
+  no_expenses_recorded: string;
+
+  // Ledgers
+  customer_supplier_ledgers: string;
+  manage_outstanding_balances: string;
+  customers_tab: string;
+  suppliers_tab: string;
+  add_customer: string;
+  add_supplier: string;
+  phone_no: string;
+  cnic_no: string;
+  email: string;
+  address: string;
+  opening_balance: string;
+  save_ledger: string;
+  receive_payment: string;
+  pay_supplier: string;
+  current_balance: string;
+  balance_due: string;
+  payment_history: string;
+  no_ledgers_recorded: string;
+
+  // Reports
+  analytical_insights: string;
+  view_profit_loss_statements: string;
+  profit_loss_summary: string;
+  total_sales_revenue: string;
+  total_cost_of_goods: string;
+  total_expenses_recorded: string;
+  net_earnings: string;
+  top_categories: string;
+  sales_by_payment_method: string;
+  export_report: string;
+
+  // Backups
+  offline_backups: string;
+  backup_and_restore_data: string;
+  export_db_file: string;
+  import_db_file: string;
+  reset_system: string;
+  backup_warning: string;
+
+  // About
+  about_system: string;
+  system_description: string;
+  developer_profile: string;
+  app_version: string;
+  built_for_retail: string;
+
+  // Missing properties from standard modules
+  expense_registry: string;
+  log_expenditure_payout: string;
+  search_bills: string;
+  date_lbl: string;
+  amount_paid: string;
+  ledgers_n_directories: string;
+  analytical_reports: string;
 }
 
 export const translations: Record<LanguageType, TranslationDictionary> = {
@@ -180,6 +315,141 @@ export const translations: Record<LanguageType, TranslationDictionary> = {
     select_language: "Select Station Language",
     english: "English (UK/US)",
     urdu: "اردو (Urdu)",
+
+    // Dashboard
+    today_sales: "Today's Sales",
+    days_revenue: "7 Days Revenue",
+    gross_profit: "Gross Profit",
+    avg_margin: "Avg. Margin",
+    total_expenses: "Total Expenses",
+    net_profit: "Net Profit",
+    total_catalog: "Total Catalog",
+    low_stock: "Low Stock",
+    items_count: "{count} Items",
+    weekly_billing_flow: "Weekly Billing Flow",
+    compare_gross_profit: "Comparing gross billing against profit vectors",
+    gross_revenue: "Gross Revenue",
+    best_selling_products: "Best Selling Products",
+    highest_volume_retail: "Highest volume retail items (Last 30 days)",
+    units_shipped: "{count} units shipped",
+    no_inventory_shipped: "No inventory shipped yet!",
+    generate_complete_shipping_reports: "Generate Complete Shipping Reports →",
+    critical_stock_alerts: "Critical Stock Alerts",
+    products_nearing_depleted: "Products nearing depleted quantities",
+    all_sufficiently_stocked: "All products are sufficiently stocked. Great!",
+    local_audit_log: "Local Audit Log",
+    continuous_background_operations: "Continuous background operations logged locally",
+    audits_settings: "Audits Settings",
+    refresh_data: "Refresh Data",
+    pos_terminal: "POS Terminal",
+    successful_receipts: "{count} successful receipts",
+    active_flow_tracking: "Active flow tracking",
+
+    // Products
+    product_catalog: "Product Catalog",
+    add_new_product: "Add New Product",
+    edit_product: "Edit Product",
+    barcode_sku: "Barcode / SKU",
+    product_name_lbl: "Product Name",
+    category: "Category",
+    purchase_cost: "Purchase Cost",
+    retail_price: "Retail Price",
+    wholesale_price: "Wholesale Price",
+    stock_quantity: "Stock Quantity",
+    minimum_alert_stock: "Minimum Alert Stock",
+    measuring_unit: "Measuring Unit",
+    save_product: "Save Product",
+    delete_product: "Delete Product",
+    search_products: "Search products catalog...",
+    all_cats: "All Categories",
+    sku: "SKU",
+    stock: "Stock",
+    actions: "Actions",
+    no_products_found: "No products matched your search parameters.",
+
+    // Sales
+    sales_history: "Sales Records Archive",
+    view_and_manage_sales: "View, audit, reprint, and refund completed store orders.",
+    search_sales: "Search invoices or customer names...",
+    invoice_no: "Invoice No",
+    date_time: "Date & Time",
+    customer_lbl: "Customer / Account",
+    grand_total_lbl: "Grand Total",
+    status_lbl: "Status",
+    refunded: "Refunded",
+    completed: "Completed",
+    reprint_receipt: "Reprint Receipt",
+    refund_sale: "Refund Sale",
+    no_sales_recorded: "No sales records stored in offline database.",
+
+    // Expenses
+    expenses_tracker: "Expense Tracker",
+    record_store_disbursements: "Record store disbursements, rent, salaries, utilities, and raw materials.",
+    add_expense: "Add Store Expense",
+    expense_amount: "Expense Amount",
+    expense_date: "Expense Date",
+    expense_category: "Expense Category",
+    expense_description: "Expense Description / Notes",
+    save_expense: "Save Expense Record",
+    delete_expense: "Delete Record",
+    search_expenses: "Search expenses...",
+    no_expenses_recorded: "No store expenses recorded for this station session.",
+
+    // Ledgers
+    customer_supplier_ledgers: "Customer & Supplier Ledgers",
+    manage_outstanding_balances: "Manage outstanding balances, credits, and paybacks.",
+    customers_tab: "Clients / Customers (Creditors)",
+    suppliers_tab: "Suppliers / Vendors (Debtors)",
+    add_customer: "Register New Customer Card",
+    add_supplier: "Register New Supplier Card",
+    phone_no: "Telephone / Phone",
+    cnic_no: "CNIC / National Identity",
+    email: "Email Address",
+    address: "Postal / Store Address",
+    opening_balance: "Opening Ledger Balance",
+    save_ledger: "Save Account Ledger Card",
+    receive_payment: "Receive Payment",
+    pay_supplier: "Pay Supplier",
+    current_balance: "Current Balance",
+    balance_due: "Balance Due",
+    payment_history: "Payment History Logs",
+    no_ledgers_recorded: "No clients or supply agents found on this ledger index.",
+
+    // Reports
+    analytical_insights: "Analytical Reports & Analytics",
+    view_profit_loss_statements: "View profit & loss statements, revenue aggregation, and payment methods.",
+    profit_loss_summary: "Profit & Loss Summary Statement",
+    total_sales_revenue: "Total Sales Revenue",
+    total_cost_of_goods: "Total Cost of Goods Sold",
+    total_expenses_recorded: "Total Expenses",
+    net_earnings: "Net Profit / Earnings",
+    top_categories: "Top Categories Contribution",
+    sales_by_payment_method: "Sales Revenue by Payment Channel",
+    export_report: "Export Statement Report",
+
+    // Backups
+    offline_backups: "Offline Backups & Maintenance",
+    backup_and_restore_data: "Backup and restore your local SQLite database image directly.",
+    export_db_file: "Export Offline Database Backup (.json)",
+    import_db_file: "Import Offline Database Backup (.json)",
+    reset_system: "Emergency Hard Reset POS",
+    backup_warning: "Warning: Resetting will completely erase your local database.",
+
+    // About
+    about_system: "About Software & Developer Profile",
+    system_description: "Enterprise-grade Offline Point-of-Sale software built for extreme responsiveness.",
+    developer_profile: "Senior Core Architect Profile",
+    app_version: "Software App Version: 2.1.0 LTS",
+    built_for_retail: "Engineered specifically for MS Windows, Android, and tablets.",
+
+    // Missing properties from standard modules
+    expense_registry: "Expense Registry & Accounts",
+    log_expenditure_payout: "Log store disbursements, salaries, utilities, and raw materials.",
+    search_bills: "Search bills or filter expenses...",
+    date_lbl: "Date",
+    amount_paid: "Amount Paid",
+    ledgers_n_directories: "Ledgers & Directories",
+    analytical_reports: "Analytical Reports",
   },
   ur: {
     // Navigation / Sidebar
@@ -254,7 +524,7 @@ export const translations: Record<LanguageType, TranslationDictionary> = {
     checkout_order: "بل مکمل کریں اور محفوظ کریں",
     hold_cart_title: "ہولڈ کارٹ کا عنوان",
     hold_cart_desc: "بعد میں بل بنانے کے لیے اسے محفوظ کریں",
-    cancel: "کینسل",
+    cancel: "منسوخ کریں",
     hold: "محفوظ کریں",
     
     // Settings
@@ -274,5 +544,140 @@ export const translations: Record<LanguageType, TranslationDictionary> = {
     select_language: "سافٹ ویئر کی زبان منتخب کریں",
     english: "انگلش (English)",
     urdu: "اردو (Urdu)",
+
+    // Dashboard
+    today_sales: "آج کی فروخت (سیلز)",
+    days_revenue: "7 دنوں کی کل آمدنی",
+    gross_profit: "مجموعی منافع",
+    avg_margin: "اوسط منافع %",
+    total_expenses: "کل اخراجات",
+    net_profit: "خالص منافع",
+    total_catalog: "کل پروڈکٹس کی تعداد",
+    low_stock: "کم اسٹاک اشیاء",
+    items_count: "{count} اشیاء",
+    weekly_billing_flow: "ہفتہ وار بلنگ اور فروخت کا بہاؤ",
+    compare_gross_profit: "مجموعی فروخت کا منافع کے ساتھ موازنہ",
+    gross_revenue: "مجموعی آمدنی",
+    best_selling_products: "سب سے زیادہ فروخت ہونے والی اشیاء",
+    highest_volume_retail: "سب سے زیادہ فروخت ہونے والی اشیاء کی تفصیل (آخری 30 دن)",
+    units_shipped: "{count} یونٹ فروخت ہوئے",
+    no_inventory_shipped: "ابھی تک کوئی سیلز ریکارڈ موجود نہیں!",
+    generate_complete_shipping_reports: "مکمل سیلز اور شپنگ رپورٹس بنائیں ←",
+    critical_stock_alerts: "کم اسٹاک وارننگز",
+    products_nearing_depleted: "وہ اشیاء جن کا اسٹاک ختم ہونے والا ہے",
+    all_sufficiently_stocked: "ماشاءاللہ! تمام اشیاء کا کافی اسٹاک موجود ہے۔",
+    local_audit_log: "سسٹم آڈٹ لاگ",
+    continuous_background_operations: "سسٹم کی سرگرمیاں اور لاگز کی تفصیلات",
+    audits_settings: "لاگ سیٹنگز",
+    refresh_data: "ڈیٹا اپڈیٹ کریں",
+    pos_terminal: "پی او ایس ٹرمینل",
+    successful_receipts: "{count} کامیاب بلز",
+    active_flow_tracking: "سرگرمیاں ٹریکر فعال ہے",
+
+    // Products
+    product_catalog: "پروڈکٹس کیٹلاگ",
+    add_new_product: "نئی پروڈکٹ شامل کریں",
+    edit_product: "پروڈکٹ ایڈٹ کریں",
+    barcode_sku: "بارکوڈ / ایس کیو یو (SKU)",
+    product_name_lbl: "پروڈکٹ کا نام",
+    category: "کیٹیگری (Category)",
+    purchase_cost: "خریداری کی قیمت (لاگت)",
+    retail_price: "پرچون فروخت قیمت (Retail)",
+    wholesale_price: "تھوک فروخت قیمت (Wholesale)",
+    stock_quantity: "موجودہ اسٹاک کی تعداد",
+    minimum_alert_stock: "کم از کم اسٹاک الرٹ",
+    measuring_unit: "پیمائش کا یونٹ (مثلاً کلو، پیکٹ)",
+    save_product: "پروڈکٹ محفوظ کریں",
+    delete_product: "پروڈکٹ حذف کریں",
+    search_products: "پروڈکٹس تلاش کریں...",
+    all_cats: "تمام کیٹیگریز",
+    sku: "ایس کیو یو",
+    stock: "اسٹاک",
+    actions: "طریقہ کار",
+    no_products_found: "آپ کی تلاش کے مطابق کوئی پروڈکٹ نہیں ملی۔",
+
+    // Sales
+    sales_history: "سیلز ریکارڈ آرکائیو",
+    view_and_manage_sales: "تمام مکمل بلز دیکھیں، رسید دوبارہ پرنٹ کریں اور ریفنڈ کریں۔",
+    search_sales: "انوائس نمبر یا گاہک کا نام تلاش کریں...",
+    invoice_no: "انوائس نمبر",
+    date_time: "تاریخ اور وقت",
+    customer_lbl: "گاہک / کھاتہ",
+    grand_total_lbl: "کل رقم (ٹوٹل)",
+    status_lbl: "حیثیت",
+    refunded: "واپس شدہ (Refunded)",
+    completed: "مکمل شدہ (Completed)",
+    reprint_receipt: "رسید پرنٹ کریں",
+    refund_sale: "بل ریفنڈ کریں",
+    no_sales_recorded: "ڈیٹا بیس میں ابھی تک کوئی سیلز ریکارڈ محفوظ نہیں ہے۔",
+
+    // Expenses
+    expenses_tracker: "اخراجات ٹریکر",
+    record_store_disbursements: "دکان کے اخراجات، کرایہ، تنخواہیں، بل اور دیگر اخراجات درج کریں۔",
+    add_expense: "نیا خرچہ درج کریں",
+    expense_amount: "خرچہ کی رقم",
+    expense_date: "خرچہ کی تاریخ",
+    expense_category: "خرچہ کی کیٹیگری",
+    expense_description: "تفصیل / ریمارکس",
+    save_expense: "خرچہ محفوظ کریں",
+    delete_expense: "حذف کریں",
+    search_expenses: "اخراجات تلاش کریں...",
+    no_expenses_recorded: "اس سیشن کے دوران کوئی اخراجات درج نہیں کیے گئے۔",
+
+    // Ledgers
+    customer_supplier_ledgers: "گاہک اور سپلائر کھاتہ (لیجر)",
+    manage_outstanding_balances: "گاہکوں کے ادھار کھاتوں اور سپلائرز کے واجب الادا رقوم کا انتظام کریں۔",
+    customers_tab: "گاہک ادھار کھاتہ (کریڈٹ)",
+    suppliers_tab: "سپلائرز واجب الادا کھاتہ (ڈیبٹ)",
+    add_customer: "نیا گاہک رجسٹر کریں",
+    add_supplier: "نیا سپلائر رجسٹر کریں",
+    phone_no: "فون نمبر",
+    cnic_no: "شناختی کارڈ نمبر (CNIC)",
+    email: "ای میل ایڈریس",
+    address: "پتہ",
+    opening_balance: "کھاتہ شروع کرنے کا بیلنس",
+    save_ledger: "کھاتہ دار محفوظ کریں",
+    receive_payment: "رقم وصول کریں",
+    pay_supplier: "ادائیگی کریں",
+    current_balance: "موجودہ بیلنس",
+    balance_due: "بقایا واجب الادا رقم",
+    payment_history: "ادائیگیوں کی ہسٹری",
+    no_ledgers_recorded: "اس کھاتہ میں کوئی نام درج نہیں ہے۔",
+
+    // Reports
+    analytical_insights: "تجزیاتی رپورٹس اور اسٹیٹمنٹ",
+    view_profit_loss_statements: "کل فروخت، لاگت، اخراجات اور خالص منافع کی رپورٹس دیکھیں۔",
+    profit_loss_summary: "مجموعی نفع و نقصان کی رپورٹ",
+    total_sales_revenue: "کل فروخت (آمدنی)",
+    total_cost_of_goods: "کل لاگت (COGS)",
+    total_expenses_recorded: "کل اخراجات",
+    net_earnings: "خالص منافع (بچت)",
+    top_categories: "مقبول کیٹیگریز کی شراکت",
+    sales_by_payment_method: "ادائیگی کے طریقوں کے مطابق آمدنی",
+    export_report: "رپورٹ ایکسپورٹ کریں",
+
+    // Backups
+    offline_backups: "ڈیٹا بیک اپ اور بحالی",
+    backup_and_restore_data: "اپنے آف لائن ڈیٹا کو محفوظ رکھیں اور بیک اپ فائل بنائیں۔",
+    export_db_file: "بیک اپ فائل بنائیں (.json)",
+    import_db_file: "بیک اپ فائل سے ڈیٹا بحال کریں (.json)",
+    reset_system: "سسٹم ری سیٹ کریں (تمام ڈیٹا صاف کریں)",
+    backup_warning: "خبردار: سسٹم ری سیٹ کرنے سے آپ کا تمام ڈیٹا مستقل طور پر حذف ہو جائے گا۔",
+
+    // About
+    about_system: "سافٹ ویئر کی معلومات اور پروفائل",
+    system_description: "انتہائی تیز رفتار اور محفوظ آف لائن پوائنٹ آف سیل سافٹ ویئر۔",
+    developer_profile: "سافٹ ویئر ڈویلپر کی تفصیلات",
+    app_version: "سافٹ ویئر ورژن: 2.1.0 LTS",
+    built_for_retail: "یہ سافٹ ویئر ونڈوز، اینڈرائیڈ اور ٹیبلٹ کے لیے تیار کیا گیا ہے۔",
+
+    // Missing properties from standard modules
+    expense_registry: "اخراجات کا ریکارڈ اور کھاتہ دار",
+    log_expenditure_payout: "دکان کے اخراجات، تنخواہیں، بل اور دیگر ادائیگیوں کا لاگ۔",
+    search_bills: "اخراجات یا بلز تلاش کریں...",
+    date_lbl: "تاریخ",
+    amount_paid: "ادا شدہ رقم",
+    ledgers_n_directories: "لیجر اور ڈائریکٹریز",
+    analytical_reports: "تجزیاتی رپورٹس",
   }
 };

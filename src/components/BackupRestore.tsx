@@ -6,6 +6,7 @@ import { DBState, getInitialDB, addLog } from '../db';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { translations } from '../lib/translations';
 
 interface BackupRestoreProps {
   db: DBState;
@@ -15,6 +16,8 @@ interface BackupRestoreProps {
 export default function BackupRestore({ db, onSaveDB }: BackupRestoreProps) {
   const { settings, backups } = db;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
 
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -226,8 +229,8 @@ export default function BackupRestore({ db, onSaveDB }: BackupRestoreProps) {
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Offline Backup & Restoration Center</h1>
-        <p className="text-sm text-slate-400">Perfect data safety with absolutely no internet requirement. Backup files are downloaded directly onto your local machine.</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{currentLang === 'ur' ? 'ڈیٹا بیک اپ اور بحالی مرکز' : 'Offline Backup & Restoration Center'}</h1>
+        <p className="text-sm text-slate-400">{currentLang === 'ur' ? 'بغیر انٹرنیٹ کے اپنے ڈیٹا کو محفوظ رکھیں؛ بیک اپ فائلز سیدھے آپ کے سسٹم پر ڈاؤن لوڈ ہو جاتی ہیں۔' : 'Perfect data safety with absolutely no internet requirement. Backup files are downloaded directly onto your local machine.'}</p>
       </div>
 
       {message && (
@@ -240,30 +243,30 @@ export default function BackupRestore({ db, onSaveDB }: BackupRestoreProps) {
       {/* BACKUP CRADLE */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
         <h3 className="font-extrabold text-slate-850 dark:text-white text-base flex items-center gap-1.5 border-b pb-3.5 mb-4">
-          <Download className="w-5 h-5 text-indigo-500" /> Compile Live Backups
+          <Download className="w-5 h-5 text-indigo-500" /> {currentLang === 'ur' ? 'بیک اپ فائل بنائیں' : 'Compile Live Backups'}
         </h3>
 
         <div className="text-xs text-slate-450 leading-relaxed font-medium space-y-2">
-          <p>Exporting compiler downloads a complete copy of products stock volumes, sales invoices, ledger audits, and business accounts configuration in standard format.</p>
-          <p>Keep these files secured inside independent USB flash drives to guarantee protection from computer crashes.</p>
+          <p>{currentLang === 'ur' ? 'بیک اپ بنانے سے اسٹاک، فروخت کے انوائسز اور کھاتوں کا مکمل ریکارڈ ڈاؤن لوڈ ہو جاتا ہے۔' : 'Exporting compiler downloads a complete copy of products stock volumes, sales invoices, ledger audits, and business accounts configuration in standard format.'}</p>
+          <p>{currentLang === 'ur' ? 'کسی بھی نقصان سے بچنے کے لیے بیک اپ فائل کو یو ایس بی یا دوسری محفوظ جگہ پر رکھیں تاکہ کمپیوٹر خراب ہونے کی صورت میں ڈیٹا ضائع نہ ہو۔' : 'Keep these files secured inside independent USB flash drives to guarantee protection from computer crashes.'}</p>
         </div>
 
         <button
           onClick={handleExportBackup}
           className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-lg flex items-center justify-center gap-2 mt-2"
         >
-          <Download className="w-4.5 h-4.5" /> Export DB Backup File (.json)
+          <Download className="w-4.5 h-4.5" /> {currentLang === 'ur' ? 'بیک اپ فائل ڈاؤن لوڈ کریں (.json)' : 'Export DB Backup File (.json)'}
         </button>
       </div>
 
       {/* RESTORE CRADLE */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
         <h3 className="font-extrabold text-slate-850 dark:text-white text-base flex items-center gap-1.5 border-b pb-3.5 mb-4">
-          <Upload className="w-5 h-5 text-emerald-500" /> Restore backup Sheet
+          <Upload className="w-5 h-5 text-emerald-500" /> {currentLang === 'ur' ? 'بیک اپ فائل بحال کریں' : 'Restore backup Sheet'}
         </h3>
 
         <div className="text-xs text-slate-450 leading-relaxed font-semibold">
-          <p className="text-rose-600 dark:text-indigo-400">WARNING: Restoring replacing active products and invoicing logs cannot be undone.</p>
+          <p className="text-rose-600 dark:text-indigo-400">{currentLang === 'ur' ? 'تنبہیہ: بیک اپ بحال کرنے سے پرانا ڈیٹا ختم ہو جائے گا اور نیا ڈیٹا درج ہو جائے گا۔ یہ عمل واپس نہیں ہو سکتا۔' : 'WARNING: Restoring replacing active products and invoicing logs cannot be undone.'}</p>
         </div>
 
         <input
@@ -278,40 +281,40 @@ export default function BackupRestore({ db, onSaveDB }: BackupRestoreProps) {
           onClick={() => fileInputRef.current?.click()}
           className="w-full py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider rounded-xl transition shadow flex items-center justify-center gap-2"
         >
-          <Upload className="w-4.5 h-4.5" /> Upload Backup File to Restore
+          <Upload className="w-4.5 h-4.5" /> {currentLang === 'ur' ? 'بیک اپ فائل لوڈ کریں' : 'Upload Backup File to Restore'}
         </button>
       </div>
 
       {/* FACTORY ERASE SYSTEM */}
       <div className="bg-rose-50/50 dark:bg-rose-955/15 p-6 rounded-3xl border border-rose-102 dark:border-rose-954 space-y-4">
         <h3 className="font-extrabold text-rose-700 text-sm tracking-wide uppercase flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-rose-500" /> Factory Clear System Operations
+          <ShieldAlert className="w-5 h-5 text-rose-500" /> {currentLang === 'ur' ? 'سسٹم ری سیٹ کی ترتیبات' : 'Factory Clear System Operations'}
         </h3>
 
         <div className="space-y-4">
           <div className="p-4 bg-white dark:bg-slate-850 rounded-2xl border border-rose-100 dark:border-rose-950/20 space-y-2">
-            <span className="block text-xs font-black text-rose-650 dark:text-rose-400 uppercase tracking-wide">Option 1: Clean Slate Reset (0 Products, 0 Charts)</span>
+            <span className="block text-xs font-black text-rose-650 dark:text-rose-400 uppercase tracking-wide">{currentLang === 'ur' ? 'پہلا طریقہ: تمام ڈیٹا حذف کریں' : 'Option 1: Clean Slate Reset (0 Products, 0 Charts)'}</span>
             <p className="text-[11px] text-slate-450 dark:text-slate-400 leading-relaxed font-medium">
-              Completely wips all transactions, products, customer logs, and expenditures back to 0. Excellent for beginning real business operations. Your customized shop branding configuration is kept safe.
+              {currentLang === 'ur' ? 'اسٹور کی تمام پراڈکٹس، ٹرانزیکشنز، گاہک اور بلز حذف کر کے نیا اسٹور شروع کرنے کے لیے بالکل خالی ڈیٹا بیس بنائیں۔ دکان کا نام اور ترتیبات محفوظ رہیں گی۔' : 'Completely wips all transactions, products, customer logs, and expenditures back to 0. Excellent for beginning real business operations. Your customized shop branding configuration is kept safe.'}
             </p>
             <button
               onClick={handleResetToCleanSlate}
               className="w-full py-2.5 bg-rose-650 hover:bg-rose-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-sm active:scale-98"
             >
-              Wipe to Clean Slate (0 Products & Data)
+              {currentLang === 'ur' ? 'ڈیٹا صاف کریں (0 پراڈکٹس)' : 'Wipe to Clean Slate (0 Products & Data)'}
             </button>
           </div>
 
           <div className="p-4 bg-white dark:bg-slate-850 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-2">
-            <span className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Option 2: Reset to Retail Demo Data</span>
+            <span className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{currentLang === 'ur' ? 'دوسرا طریقہ: ڈیمو ڈیٹا لوڈ کریں' : 'Option 2: Reset to Retail Demo Data'}</span>
             <p className="text-[11px] text-slate-450 dark:text-slate-400 leading-relaxed font-medium">
-              Erase current database records and re-generate simulated products, sample bills, customer ledger tabs, and graphics for testing.
+              {currentLang === 'ur' ? 'آزمائشی استعمال کے لیے فرضی پراڈکٹس، فرضی بلز اور گاہکوں کا ڈیمو ڈیٹا لوڈ کریں۔' : 'Erase current database records and re-generate simulated products, sample bills, customer ledger tabs, and graphics for testing.'}
             </p>
             <button
               onClick={handleFactoryResetDatabase}
               className="w-full py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-750 font-bold text-xs uppercase tracking-wider rounded-xl transition active:scale-98"
             >
-              Re-seed Demonstration Data
+              {currentLang === 'ur' ? 'آزمائشی (ڈیمو) ڈیٹا لوڈ کریں' : 'Re-seed Demonstration Data'}
             </button>
           </div>
         </div>

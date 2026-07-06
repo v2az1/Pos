@@ -2,5 +2,5 @@
   "name": "Offline POS & Inventory",
   "description": "A complete, high-performance offline desktop Point of Sale (POS) and inventory management software with billing, ledgers, reports, analytics, and backup systems.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_LESS"]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

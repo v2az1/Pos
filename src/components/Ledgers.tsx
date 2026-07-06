@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { DBState, addLog } from '../db';
 import { Customer, LedgerEntry } from '../types';
+import { translations } from '../lib/translations';
 
 interface LedgersProps {
   db: DBState;
@@ -14,6 +15,8 @@ interface LedgersProps {
 export default function Ledgers({ db, onSaveDB }: LedgersProps) {
   const { ledgers, customers, settings } = db;
   const currency = settings.currency;
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
 
   const [activeTab, setActiveTab] = useState<'cash' | 'customers'>('cash');
   const [search, setSearch] = useState('');
@@ -218,8 +221,8 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
       {/* Top title */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-sans">Financial Ledgers & Directories</h1>
-          <p className="text-sm text-slate-400">Track operating cash drawer registries and customer accounts credit balances.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight font-sans">{t.ledgers_n_directories}</h1>
+          <p className="text-sm text-slate-400">{currentLang === 'ur' ? 'کیش رجسٹر اور گاہکوں کے ادھار کھاتوں کی تفصیلات یہاں دیکھیں' : 'Track operating cash drawer registries and customer accounts credit balances.'}</p>
         </div>
         
         {activeTab === 'customers' && (
@@ -228,7 +231,7 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
             className="self-start sm:self-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-4 rounded-xl shadow-md flex items-center gap-1.5 transition-all duration-150 active:scale-95"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Register New Customer</span>
+            <span>{t.add_customer}</span>
           </button>
         )}
       </div>
@@ -244,7 +247,7 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
           }`}
         >
           <CircleDollarSign className="w-4 h-4" />
-          <span>Cash Drawer Registry ({currency}{currentCashInRegister.toLocaleString()})</span>
+          <span>{currentLang === 'ur' ? `کیش رجسٹر کھاتہ (${currency}${currentCashInRegister.toLocaleString()})` : `Cash Drawer Registry (${currency}${currentCashInRegister.toLocaleString()})`}</span>
         </button>
         <button
           onClick={() => { setActiveTab('customers'); setSearch(''); }}
@@ -255,7 +258,7 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Customer Accounts Ledger ({customers.length})</span>
+          <span>{currentLang === 'ur' ? `گاہکوں کا لیجر (${customers.length})` : `Customer Accounts Ledger (${customers.length})`}</span>
         </button>
       </div>
 
@@ -265,21 +268,21 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
           {/* Cash register statistics card */}
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><ArrowUpRight className="w-4 h-4 text-emerald-500" /> Cash register Inflows</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><ArrowUpRight className="w-4 h-4 text-emerald-500" /> {currentLang === 'ur' ? 'کیش آمدنی (Inflow)' : 'Cash register Inflows'}</span>
               <div className="text-xl font-black text-emerald-500">{currency} {cashIn.toLocaleString()}</div>
-              <p className="text-[10px] text-slate-400">Voucher checkouts & manual ledger entries</p>
+              <p className="text-[10px] text-slate-400">{currentLang === 'ur' ? 'کل فروخت اور موصولہ ادھار ادائیگیاں' : 'Voucher checkouts & manual ledger entries'}</p>
             </div>
 
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><ArrowDownRight className="w-4 h-4 text-rose-500" /> Cash register Outflows</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><ArrowDownRight className="w-4 h-4 text-rose-500" /> {currentLang === 'ur' ? 'کیش اخراجات (Outflow)' : 'Cash register Outflows'}</span>
               <div className="text-xl font-black text-rose-500">{currency} {cashOut.toLocaleString()}</div>
-              <p className="text-[10px] text-slate-400">Logged store and utility expenses</p>
+              <p className="text-[10px] text-slate-400">{currentLang === 'ur' ? 'اسٹور کے اخراجات اور پے آؤٹس' : 'Logged store and utility expenses'}</p>
             </div>
 
             <div className="space-y-1 bg-indigo-50/50 dark:bg-indigo-950/20 p-3 rounded-xl border border-indigo-150/10">
-              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5"><CircleDollarSign className="w-4.5 h-4.5 text-indigo-500" /> Net Operating Cash On Hand</span>
+              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5"><CircleDollarSign className="w-4.5 h-4.5 text-indigo-500" /> {currentLang === 'ur' ? 'کیش رجسٹر بیلنس' : 'Net Operating Cash On Hand'}</span>
               <div className="text-2xl font-black text-indigo-600 dark:text-white">{currency} {currentCashInRegister.toLocaleString()}</div>
-              <p className="text-[10px] text-slate-400">Physical liquid assets operating inside register drawer</p>
+              <p className="text-[10px] text-slate-400">{currentLang === 'ur' ? 'کیش دراز میں موجود کل نقد رقم' : 'Physical liquid assets operating inside register drawer'}</p>
             </div>
           </div>
 
@@ -289,7 +292,7 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
               <Search className="absolute left-3 top-3 w-4.5 h-4.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Filter entries in cash ledger journal..."
+                placeholder={currentLang === 'ur' ? 'کیش رجسٹر کھاتہ میں تلاش کریں...' : 'Filter entries in cash ledger journal...'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs focus:outline-none rounded-xl"
@@ -303,11 +306,11 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
               <table className="min-w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase font-extrabold tracking-wider border-b border-slate-100 dark:border-slate-800">
                   <tr>
-                    <th className="px-5 py-4">Transaction Timestamp</th>
-                    <th className="px-5 py-4">Account Target</th>
-                    <th className="px-5 py-4">Details Description Remarks</th>
-                    <th className="px-5 py-4 text-center">Type</th>
-                    <th className="px-5 py-4 text-right">Debit / Credit Value</th>
+                    <th className="px-5 py-4">{t.date_time}</th>
+                    <th className="px-5 py-4">{currentLang === 'ur' ? 'کھاتہ کی قسم' : 'Account Target'}</th>
+                    <th className="px-5 py-4">{currentLang === 'ur' ? 'تفصیل' : 'Details Description Remarks'}</th>
+                    <th className="px-5 py-4 text-center">{t.status_lbl}</th>
+                    <th className="px-5 py-4 text-right">{currentLang === 'ur' ? 'رقم' : 'Debit / Credit Value'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-705/35">
@@ -361,8 +364,8 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
           <div className="bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30 p-4 rounded-xl flex items-start gap-3">
             <Notebook className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
             <div className="text-xs text-slate-600 dark:text-slate-300">
-              <p className="font-bold mb-0.5">Credit Tracking Mechanism</p>
-              <p>Customers listed below can purchase products on Credit during Checkout. Any unpaid balances are added to their card ledger. You can receive partial or full payments from clients here to clear their ledger sheets.</p>
+              <p className="font-bold mb-0.5">{currentLang === 'ur' ? 'ادھار کریڈٹ ٹریکنگ کا طریقہ کار' : 'Credit Tracking Mechanism'}</p>
+              <p>{currentLang === 'ur' ? 'گاہک چیک آؤٹ کے دوران ادھار (کریڈٹ) پر اشیاء خرید سکتے ہیں۔ نادہندہ واجب الادا رقوم خود بخود ان کے کھاتے میں شامل ہو جاتی ہیں۔ آپ یہاں ان سے ادائیگیاں وصول کر کے کھاتہ صاف کر سکتے ہیں۔' : 'Customers listed below can purchase products on Credit during Checkout. Any unpaid balances are added to their card ledger. You can receive partial or full payments from clients here to clear their ledger sheets.'}</p>
             </div>
           </div>
 
@@ -372,7 +375,7 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
               <Search className="absolute left-3 top-3 w-4.5 h-4.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search registered customers by name, phone, CNIC or email..."
+                placeholder={currentLang === 'ur' ? 'گاہک کا نام، فون نمبر یا ای میل تلاش کریں...' : 'Search registered customers by name, phone, CNIC or email...'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs focus:outline-none rounded-xl"
@@ -407,14 +410,14 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
                                 ? 'bg-amber-50 text-amber-600 dark:bg-amber-955/20 dark:text-amber-400' 
                                 : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-955/20 dark:text-emerald-400'
                           }`}>
-                            {isWalkIn ? 'System Walk-in' : hasBalance ? 'Has Outstanding Credit' : 'Balance Settled'}
+                            {isWalkIn ? (currentLang === 'ur' ? 'عام گاہک (سسٹم)' : 'System Walk-in') : hasBalance ? (currentLang === 'ur' ? 'بقایا واجب الادا رقم' : 'Has Outstanding Credit') : (currentLang === 'ur' ? 'کھاتہ صاف ہے' : 'Balance Settled')}
                           </span>
                           {!isWalkIn && (
                             <button
                               type="button"
                               onClick={() => handleDeleteCustomer(cust)}
                               className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition shrink-0"
-                              title="Delete Customer Profile"
+                              title={currentLang === 'ur' ? 'گاہک کا پروفائل حذف کریں' : 'Delete Customer Profile'}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -438,7 +441,7 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
                     {/* Financial Summary card bottom */}
                     <div className="border-t border-slate-100 dark:border-slate-750 pt-3 flex items-center justify-between mt-auto">
                       <div>
-                        <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Debit Ledger Balance</span>
+                        <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">{currentLang === 'ur' ? 'کل واجب الادا (ادھار)' : 'Debit Ledger Balance'}</span>
                         <span className={`text-base font-black ${hasBalance ? 'text-rose-500' : 'text-slate-700 dark:text-slate-300'}`}>
                           {currency} {cust.currentBalance.toLocaleString()}
                         </span>
@@ -453,7 +456,7 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
                           className="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1 border border-indigo-100 dark:border-indigo-900/40"
                         >
                           <CreditCard className="w-3.5 h-3.5" />
-                          <span>Receive Payment</span>
+                          <span>{currentLang === 'ur' ? 'ادائیگی وصول کریں' : 'Receive Payment'}</span>
                         </button>
                       )}
                     </div>
@@ -463,7 +466,7 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
             ) : (
               <div className="col-span-full py-20 text-center text-slate-400">
                 <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                No matching customers found. Register new customers using the top button.
+                {currentLang === 'ur' ? 'کوئی مطابقت رکھنے والا گاہک نہیں ملا۔' : 'No matching customers found. Register new customers using the top button.'}
               </div>
             )}
           </div>
@@ -478,7 +481,9 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
             <div className="p-4 px-5 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="font-extrabold text-slate-800 dark:text-white text-sm uppercase tracking-wider">Register New Customer</h3>
+                <h3 className="font-extrabold text-slate-800 dark:text-white text-sm uppercase tracking-wider">
+                  {currentLang === 'ur' ? 'نیا گاہک رجسٹر کریں' : 'Register New Customer'}
+                </h3>
               </div>
               <button 
                 onClick={() => setShowAddCustomerModal(false)}
@@ -491,11 +496,13 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
             {/* Modal Body / Form */}
             <form onSubmit={handleRegisterCustomer} className="p-5 space-y-4 overflow-y-auto">
               <div className="space-y-1">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name / Business Title <span className="text-rose-500">*</span></label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {currentLang === 'ur' ? 'پورا نام / کاروباری نام' : 'Full Name / Business Title'} <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Al-Madina Wholesale Distributors"
+                  placeholder={currentLang === 'ur' ? 'مثال کے طور پر: احمد ہول سیلرز' : 'e.g. Al-Madina Wholesale Distributors'}
                   value={newCustName}
                   onChange={(e) => setNewCustName(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-600 transition"
@@ -504,7 +511,9 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {currentLang === 'ur' ? 'فون نمبر' : 'Phone Number'}
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. 0300-1234567"
@@ -515,7 +524,9 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">CNIC Identifier</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {currentLang === 'ur' ? 'شناختی کارڈ نمبر (CNIC)' : 'CNIC Identifier'}
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. 42101-1234567-1"
@@ -527,7 +538,9 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {currentLang === 'ur' ? 'ای میل ایڈریس' : 'Email Address'}
+                </label>
                 <input
                   type="email"
                   placeholder="e.g. client@domain.com"
@@ -538,10 +551,12 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Physical Address Details</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {currentLang === 'ur' ? 'پتہ کی تفصیلات' : 'Physical Address Details'}
+                </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Shop # 24, Main Wholesale Market, Karachi"
+                  placeholder={currentLang === 'ur' ? 'مثال کے طور پر: دکان نمبر 24، مین بازار، کراچی' : 'e.g. Shop # 24, Main Wholesale Market, Karachi'}
                   value={newCustAddress}
                   onChange={(e) => setNewCustAddress(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-600 transition"
@@ -550,17 +565,23 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
 
               <div className="space-y-1 border-t border-slate-100 dark:border-slate-700/60 pt-3">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Initial Ledger Balance ({currency})</label>
-                  <span className="text-[9px] text-indigo-500 font-bold flex items-center gap-0.5"><Sparkles className="w-3 h-3" /> Ledger Debt</span>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {currentLang === 'ur' ? `ابتدائی لیجر بیلنس (${currency})` : `Initial Ledger Balance (${currency})`}
+                  </label>
+                  <span className="text-[9px] text-indigo-500 font-bold flex items-center gap-0.5">
+                    <Sparkles className="w-3 h-3" /> {currentLang === 'ur' ? 'لیجر ادھار بقایا' : 'Ledger Debt'}
+                  </span>
                 </div>
                 <input
                   type="number"
-                  placeholder="e.g. 5000 (if they already owe money)"
+                  placeholder={currentLang === 'ur' ? 'مثال: 5000 (اگر پہلے سے رقم واجب الادا ہو)' : 'e.g. 5000 (if they already owe money)'}
                   value={newCustOpeningBal}
                   onChange={(e) => setNewCustOpeningBal(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-600 transition"
                 />
-                <p className="text-[9.5px] text-slate-404 leading-tight">Enter positive numbers if this customer has a balance to pay off. Use 0 for cash-only Walk-In setups.</p>
+                <p className="text-[9.5px] text-slate-404 leading-tight">
+                  {currentLang === 'ur' ? 'اگر اس گاہک کا پہلے سے کوئی بقایا ہے تو رقم درج کریں۔ نقد گاہک کے لیے 0 لکھیں۔' : 'Enter positive numbers if this customer has a balance to pay off. Use 0 for cash-only Walk-In setups.'}
+                </p>
               </div>
 
               <div className="flex gap-3 pt-3">
@@ -569,13 +590,13 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
                   onClick={() => setShowAddCustomerModal(false)}
                   className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-650 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition"
                 >
-                  Cancel
+                  {currentLang === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition"
                 >
-                  Register Customer
+                  {currentLang === 'ur' ? 'گاہک رجسٹر کریں' : 'Register Customer'}
                 </button>
               </div>
             </form>
@@ -591,7 +612,9 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
             <div className="p-4 px-5 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="font-extrabold text-slate-800 dark:text-white text-sm uppercase tracking-wider">Log Payment Receipt</h3>
+                <h3 className="font-extrabold text-slate-800 dark:text-white text-sm uppercase tracking-wider">
+                  {currentLang === 'ur' ? 'ادائیگی کی رسید درج کریں' : 'Log Payment Receipt'}
+                </h3>
               </div>
               <button 
                 onClick={() => { setSelectedCustomerForPayment(null); setShowPaymentModal(false); }}
@@ -604,16 +627,20 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
             {/* Modal form */}
             <form onSubmit={handleReceivePayment} className="p-5 space-y-4">
               <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-750 rounded-xl space-y-1">
-                <span className="text-[9px] font-bold text-slate-400 uppercase">Customer Target</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase">
+                  {currentLang === 'ur' ? 'گاہک کا نام' : 'Customer Target'}
+                </span>
                 <p className="text-xs font-black text-slate-800 dark:text-white uppercase">{selectedCustomerForPayment.name}</p>
                 <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800 text-[11px] font-bold">
-                  <span className="text-slate-500">Outstanding credit:</span>
+                  <span className="text-slate-500">{currentLang === 'ur' ? 'بقایا ادھار:' : 'Outstanding credit:'}</span>
                   <span className="text-rose-500">{currency} {selectedCustomerForPayment.currentBalance.toLocaleString()}</span>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Received Cash Payment Amount ({currency}) <span className="text-rose-500">*</span></label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {currentLang === 'ur' ? `موصولہ رقم درج کریں (${currency})` : `Received Cash Payment Amount (${currency})`} <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="number"
                   required
@@ -625,10 +652,12 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Remarks / Receipt Memo</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {currentLang === 'ur' ? 'تفصیل / ریمارکس' : 'Remarks / Receipt Memo'}
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g. Cash received by cashier to settle invoice #1034"
+                  placeholder={currentLang === 'ur' ? 'مثال کے طور پر: بقایا کی جزوی ادائیگی' : 'e.g. Cash received by cashier to settle invoice #1034'}
                   value={paymentRemarks}
                   onChange={(e) => setPaymentRemarks(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:border-indigo-600 transition"
@@ -641,13 +670,13 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
                   onClick={() => { setSelectedCustomerForPayment(null); setShowPaymentModal(false); }}
                   className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-650 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition"
                 >
-                  Cancel
+                  {currentLang === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition"
                 >
-                  Record Receipt
+                  {currentLang === 'ur' ? 'وصولی درج کریں' : 'Record Receipt'}
                 </button>
               </div>
             </form>
@@ -663,7 +692,9 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
             <div className="p-4 px-5 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
               <div className="flex items-center gap-2">
                 <Trash2 className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                <h3 className="font-extrabold text-slate-800 dark:text-white text-sm uppercase tracking-wider">Delete Customer Profile</h3>
+                <h3 className="font-extrabold text-slate-800 dark:text-white text-sm uppercase tracking-wider">
+                  {currentLang === 'ur' ? 'گاہک کا پروفائل حذف کریں' : 'Delete Customer Profile'}
+                </h3>
               </div>
               <button 
                 type="button"
@@ -678,18 +709,32 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
             <div className="p-5 space-y-4">
               <div className="text-center space-y-2">
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  Are you sure you want to permanently delete customer <strong className="text-slate-800 dark:text-white">"{customerToDelete.name}"</strong>?
+                  {currentLang === 'ur' ? (
+                    <span>کیا آپ واقعی گاہک <strong className="text-slate-800 dark:text-white">"{customerToDelete.name}"</strong> کو مستقل طور پر حذف کرنا چاہتے ہیں؟</span>
+                  ) : (
+                    <span>Are you sure you want to permanently delete customer <strong className="text-slate-800 dark:text-white">"{customerToDelete.name}"</strong>?</span>
+                  )}
                 </p>
                 <p className="text-[11px] text-slate-400">
-                  This action will remove their record from the active directory. Any historic ledger records will remain for audit purposes.
+                  {currentLang === 'ur' ? (
+                    <span>اس عمل سے گاہک کا ریکارڈ فعال فہرست سے حذف ہو جائے گا۔ سابقہ لیجر ریکارڈز آڈٹ کے لیے محفوظ رہیں گے۔</span>
+                  ) : (
+                    <span>This action will remove their record from the active directory. Any historic ledger records will remain for audit purposes.</span>
+                  )}
                 </p>
               </div>
 
               {customerToDelete.currentBalance > 0 && (
                 <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 rounded-xl space-y-1">
-                  <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider block">⚠️ Outstanding Balance warning</span>
+                  <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider block">
+                    {currentLang === 'ur' ? '⚠️ بقایا واجب الادا رقم کا انتباہ' : '⚠️ Outstanding Balance warning'}
+                  </span>
                   <p className="text-xs font-bold text-rose-700 dark:text-rose-300">
-                    This customer currently has an active credit ledger balance of <span className="font-black">{currency} {customerToDelete.currentBalance.toLocaleString()}</span>.
+                    {currentLang === 'ur' ? (
+                      <span>اس گاہک کا فی الحال <span className="font-black">{currency} {customerToDelete.currentBalance.toLocaleString()}</span> کا ادھار بقایا ہے۔</span>
+                    ) : (
+                      <span>This customer currently has an active credit ledger balance of <span className="font-black">{currency} {customerToDelete.currentBalance.toLocaleString()}</span>.</span>
+                    )}
                   </p>
                 </div>
               )}
@@ -700,14 +745,14 @@ export default function Ledgers({ db, onSaveDB }: LedgersProps) {
                   onClick={() => setCustomerToDelete(null)}
                   className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-650 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition"
                 >
-                  Cancel
+                  {currentLang === 'ur' ? 'منسوخ کریں' : 'Cancel'}
                 </button>
                 <button
                   type="button"
                   onClick={executeDeleteCustomer}
                   className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition"
                 >
-                  Confirm Delete
+                  {currentLang === 'ur' ? 'تصدیق کریں' : 'Confirm Delete'}
                 </button>
               </div>
             </div>

@@ -7,6 +7,7 @@ import { DBState, addLog } from '../db';
 import { Product, Category } from '../types';
 import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { translations } from '../lib/translations';
 
 interface ProductManagementProps {
   db: DBState;
@@ -16,6 +17,8 @@ interface ProductManagementProps {
 export default function ProductManagement({ db, onSaveDB }: ProductManagementProps) {
   const { products, categories, suppliers, settings } = db;
   const currency = settings.currency;
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
 
   // Search/Filters
   const [search, setSearch] = useState('');
@@ -318,19 +321,19 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Product Catalog</h1>
-          <p className="text-sm text-slate-400">Total catalog collection holds <strong className="text-slate-650 dark:text-slate-200">{products.length} unique SKUs</strong></p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{t.product_catalog}</h1>
+          <p className="text-sm text-slate-400">{currentLang === 'ur' ? `کل کیٹلاگ میں ${products.length} پروڈکٹس موجود ہیں` : `Total catalog collection holds ${products.length} unique SKUs`}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={handleExportCSV}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-350 hover:bg-slate-100 transition active:scale-98"
           >
-            <FileDown className="w-4.5 h-4.5 text-slate-400" /> Export CSV Sheet
+            <FileDown className="w-4.5 h-4.5 text-slate-400" /> {currentLang === 'ur' ? 'ایکسپورٹ CSV' : 'Export CSV Sheet'}
           </button>
           
           <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-350 hover:bg-slate-100 transition active:scale-98">
-            <FileUp className="w-4.5 h-4.5 text-slate-400" /> Import CSV Sheet
+            <FileUp className="w-4.5 h-4.5 text-slate-400" /> {currentLang === 'ur' ? 'امپورٹ CSV' : 'Import CSV Sheet'}
             <input type="file" accept=".csv" className="hidden" onChange={handleSimulateCSVImport} />
           </label>
 
@@ -338,7 +341,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
             onClick={() => { resetForm(); setShowAddEditModal(true); }}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-md active:scale-98"
           >
-            <Plus className="w-5 h-5" /> Add New SKU Code
+            <Plus className="w-5 h-5" /> {t.add_new_product}
           </button>
         </div>
       </div>
@@ -349,7 +352,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
           <Search className="absolute left-3 top-3 w-4.5 h-4.5 text-slate-400" />
           <input
             type="text"
-            placeholder="Search products by barcode value, SKU, custom titles..."
+            placeholder={t.search_products}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600"
@@ -362,7 +365,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
             onChange={(e) => setSelectedCat(e.target.value)}
             className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-slate-650 dark:text-slate-300 text-xs rounded-xl px-3.5 py-2 font-bold focus:outline-none"
           >
-            <option value="All">All Categories</option>
+            <option value="All">{t.all_cats}</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
 
@@ -371,9 +374,9 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
             onChange={(e) => setStockFilter(e.target.value as any)}
             className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-slate-651 dark:text-slate-301 text-xs rounded-xl px-3.5 py-2 font-bold focus:outline-none"
           >
-            <option value="All">All Stocks Levels</option>
-            <option value="Low">Low Stock Alerts</option>
-            <option value="Out">Out of stock (0)</option>
+            <option value="All">{currentLang === 'ur' ? 'تمام اسٹاک کی سطح' : 'All Stock Levels'}</option>
+            <option value="Low">{currentLang === 'ur' ? 'کم اسٹاک کی وارننگ' : 'Low Stock Alerts'}</option>
+            <option value="Out">{currentLang === 'ur' ? 'اسٹاک ختم (0)' : 'Out of stock (0)'}</option>
           </select>
         </div>
       </div>
@@ -384,14 +387,14 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
           <table className="min-w-full text-left text-xs">
             <thead className="bg-slate-50/70 dark:bg-slate-850 text-slate-450 uppercase font-extrabold tracking-wider border-b border-indigo-50/10">
               <tr>
-                <th className="px-5 py-4">Item SKU & Code</th>
-                <th className="px-5 py-4">Product Display Name</th>
-                <th className="px-5 py-4">Wholesale Supplier</th>
-                <th className="px-5 py-4 text-right">Cost Price</th>
-                <th className="px-5 py-4 text-right">Retail Sell</th>
-                <th className="px-5 py-4 text-center">Remaining Quantity</th>
-                <th className="px-5 py-2 text-center">Barcode Label</th>
-                <th className="px-5 py-4 text-right">Action Operations</th>
+                <th className="px-5 py-4">{currentLang === 'ur' ? 'پروڈکٹ بارکوڈ / ایس کیو یو' : 'Item SKU & Code'}</th>
+                <th className="px-5 py-4">{currentLang === 'ur' ? 'اشیاء کا نام' : 'Product Display Name'}</th>
+                <th className="px-5 py-4">{currentLang === 'ur' ? 'سپلائر' : 'Wholesale Supplier'}</th>
+                <th className="px-5 py-4 text-right">{t.purchase_cost}</th>
+                <th className="px-5 py-4 text-right">{currentLang === 'ur' ? 'پرچون قیمت' : 'Retail Price'}</th>
+                <th className="px-5 py-4 text-center">{currentLang === 'ur' ? 'موجودہ اسٹاک' : 'Remaining Quantity'}</th>
+                <th className="px-5 py-2 text-center">{currentLang === 'ur' ? 'بارکوڈ لیبل' : 'Barcode Label'}</th>
+                <th className="px-5 py-4 text-right">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-705/35">

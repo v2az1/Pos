@@ -3,6 +3,7 @@ import {
   BarChart3, FileText, Download, Printer, Landmark, TrendingUp, TrendingDown, CircleDollarSign, AlertCircle, Info, FileSpreadsheet
 } from 'lucide-react';
 import { DBState } from '../db';
+import { translations } from '../lib/translations';
 
 interface ReportsProps {
   db: DBState;
@@ -11,6 +12,8 @@ interface ReportsProps {
 export default function Reports({ db }: ReportsProps) {
   const { products, sales, expenses, customers, suppliers, settings } = db;
   const currency = settings.currency;
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
 
   const [activeReportType, setActiveReportType] = useState<
     'sales' | 'profit' | 'expense' | 'inventory' | 'tax'
@@ -115,36 +118,45 @@ export default function Reports({ db }: ReportsProps) {
       {/* Upper header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Analytical Reports Module</h1>
-          <p className="text-sm text-slate-400">Generate, print, and export CSV ledger books for offline auditing.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{t.analytical_reports}</h1>
+          <p className="text-sm text-slate-400">{currentLang === 'ur' ? 'رپورٹس تیار کریں، پرنٹ کریں اور آف لائن آڈٹ کے لیے CSV فائل ڈاؤن لوڈ کریں۔' : 'Generate, print, and export CSV ledger books for offline auditing.'}</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-705 dark:text-slate-205 transition"
           >
-            <Printer className="w-4 h-4 text-slate-450" /> Print Auditing Report
+            <Printer className="w-4 h-4 text-slate-450" /> {currentLang === 'ur' ? 'رپورٹ پرنٹ کریں' : 'Print Auditing Report'}
           </button>
           <button
             onClick={handleDownloadCSVReport}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition shadow"
           >
-            <Download className="w-4 h-4" /> Export CSV Spreadsheet
+            <Download className="w-4 h-4" /> {currentLang === 'ur' ? 'ایکسپورٹ CSV' : 'Export CSV Spreadsheet'}
           </button>
         </div>
       </div>
 
       {/* Reports tabs line */}
       <div className="flex flex-wrap gap-2 border-b pb-2 select-none text-xs font-bold">
-        {(['sales', 'profit', 'expense', 'inventory', 'tax'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveReportType(tab)}
-            className={`py-2 px-4 rounded-xl border transition ${activeReportType === tab ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-slate-805 border-slate-150 hover:bg-slate-50 text-slate-600'}`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)} Report
-          </button>
-        ))}
+        {(['sales', 'profit', 'expense', 'inventory', 'tax'] as const).map(tab => {
+          const tabLabelMap: Record<string, string> = {
+            sales: currentLang === 'ur' ? 'فروخت رپورٹ' : 'Sales Report',
+            profit: currentLang === 'ur' ? 'منافع رپورٹ' : 'Profit Report',
+            expense: currentLang === 'ur' ? 'اخراجات رپورٹ' : 'Expense Report',
+            inventory: currentLang === 'ur' ? 'انوینٹری رپورٹ' : 'Inventory Report',
+            tax: currentLang === 'ur' ? 'ٹیکس رپورٹ' : 'Tax Report'
+          };
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveReportType(tab)}
+              className={`py-2 px-4 rounded-xl border transition ${activeReportType === tab ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-slate-805 border-slate-150 hover:bg-slate-50 text-slate-600'}`}
+            >
+              {tabLabelMap[tab]}
+            </button>
+          );
+        })}
       </div>
 
       {/* Grid statistics depending on active report */}

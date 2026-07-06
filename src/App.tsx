@@ -467,7 +467,7 @@ export default function App() {
               />
             )}
             {activeView === 'about' && (
-              <About />
+              <About db={db} />
             )}
           </div>
         </main>

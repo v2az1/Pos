@@ -4,8 +4,17 @@ import {
   Layers, Sparkles, CheckCircle2, ExternalLink, MessageSquare, 
   Heart, Database, Terminal, Zap, ShoppingBag
 } from 'lucide-react';
+import { DBState } from '../db';
+import { translations } from '../lib/translations';
 
-export const About: React.FC = () => {
+interface AboutProps {
+  db: DBState;
+}
+
+export const About: React.FC<AboutProps> = ({ db }) => {
+  const currentLang = db.settings.language || 'en';
+  const t = translations[currentLang];
+
   return (
     <div className="space-y-8 animate-fade-in pb-12">
       {/* Header Banner */}
@@ -16,22 +25,22 @@ export const About: React.FC = () => {
         <div className="relative z-10 max-w-3xl space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            Commercial POS & Inventory Station
+            {currentLang === 'ur' ? 'ہول سیل پوائنٹ آف سیل اور انوینٹری اسٹیشن' : 'Commercial POS & Inventory Station'}
           </div>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
-            Wholesale POS Terminal
+            {currentLang === 'ur' ? 'ہول سیل پی او ایس ٹرمینل' : 'Wholesale POS Terminal'}
           </h1>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
-            An advanced, enterprise-grade Point of Sale, inventory cataloging, and financial ledger platform crafted with precision engineering for commercial wholesalers and high-volume retail distributors.
+            {currentLang === 'ur' ? 'ایک جدید، کاروباری سطح کا پوائنٹ آف سیل، انوینٹری اور فنانشل لیجر پلیٹ فارم جو ہول سیلرز اور ریٹیل ڈسٹری بیوٹرز کے لیے تیار کیا گیا ہے۔' : 'An advanced, enterprise-grade Point of Sale, inventory cataloging, and financial ledger platform crafted with precision engineering for commercial wholesalers and high-volume retail distributors.'}
           </p>
           <div className="flex flex-wrap gap-4 pt-2">
             <div className="flex items-center gap-2 bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-700/60 text-xs font-bold">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              100% Offline & Private Data
+              {currentLang === 'ur' ? '100% آف لائن اور محفوظ ڈیٹا' : '100% Offline & Private Data'}
             </div>
             <div className="flex items-center gap-2 bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-700/60 text-xs font-bold">
               <Zap className="w-4 h-4 text-amber-400" />
-              Sub-Millisecond Billing
+              {currentLang === 'ur' ? 'سپر فاسٹ بلنگ سروس' : 'Sub-Millisecond Billing'}
             </div>
           </div>
         </div>
@@ -50,8 +59,8 @@ export const About: React.FC = () => {
                 <Code className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 block">Lead Software Architect</span>
-                <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Developed By</h2>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 block">{currentLang === 'ur' ? 'سربراہ سافٹ ویئر آرکیٹیکٹ' : 'Lead Software Architect'}</span>
+                <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">{currentLang === 'ur' ? 'تیار کردہ' : 'Developed By'}</h2>
               </div>
             </div>
 
@@ -60,7 +69,7 @@ export const About: React.FC = () => {
                 Azib Abbasi
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                Full-stack engineer & UI/UX specialist dedicated to building robust, commercial-grade enterprise tools.
+                {currentLang === 'ur' ? 'فل اسٹیک سوفٹ ویئر انجینئر اور یو آئی/یو ایکس کے ماہر، جو معیاری کاروباری سوفٹ ویئر بنانے کے لیے کوشاں ہیں۔' : 'Full-stack engineer & UI/UX specialist dedicated to building robust, commercial-grade enterprise tools.'}
               </p>
             </div>
 
@@ -76,7 +85,7 @@ export const About: React.FC = () => {
                     <Instagram className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Instagram Profile</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">{currentLang === 'ur' ? 'انسٹاگرام پروفائل' : 'Instagram Profile'}</span>
                     <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100 group-hover/link:text-purple-600 dark:group-hover/link:text-purple-400 transition">azib._5</span>
                   </div>
                 </div>
@@ -94,7 +103,7 @@ export const About: React.FC = () => {
                     <PhoneCall className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Contact & WhatsApp</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">{currentLang === 'ur' ? 'رابطہ اور واٹس ایپ' : 'Contact & WhatsApp'}</span>
                     <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100 group-hover/link:text-emerald-600 dark:group-hover/link:text-emerald-400 transition">+92 324 6707207</span>
                   </div>
                 </div>
@@ -105,7 +114,7 @@ export const About: React.FC = () => {
 
           <div className="pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
             <span className="text-[11px] font-bold text-slate-400 flex items-center justify-center gap-1.5">
-              Made with <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline" /> for commercial excellence
+              {currentLang === 'ur' ? 'کاروباری ترقی کے جذبے کے ساتھ تیار کردہ' : 'Made with Love for commercial excellence'}
             </span>
           </div>
         </div>
