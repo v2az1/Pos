@@ -2,17 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Barcode, Trash2, Tag, Percent, Info, ShoppingCart, 
   User, Check, DollarSign, ListFilter, Play, Bookmark, FileText, ChevronRight, Image,
-  AlertTriangle, X, Package, Printer, UserPlus, Sparkles, Bluetooth
+  AlertTriangle, X, Package, Printer, UserPlus, Sparkles, Bluetooth, Settings
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { DBState, addLog } from '../db';
 import { Product, Customer, CartItem, Sale, HoldCart } from '../types';
 import { triggerHaptic } from '../lib/capacitor';
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 import { translations } from '../lib/translations';
-import { printReceiptViaBluetooth, getSavedPaperSize } from '../lib/bluetoothPrinter';
+import { printReceiptViaBluetooth, getSavedPaperSize, getSavedPrinter } from '../lib/bluetoothPrinter';
+import { saveInvoiceTextDirect, saveInvoiceImageDirect } from '../lib/fileSaver';
+import { BluetoothPrinterModal } from './BluetoothPrinterModal';
 
 interface POSBillingProps {
   db: DBState;
@@ -78,6 +77,7 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
   const [lastScannedItem, setLastScannedItem] = useState<string>('');
   const [showScanSuccess, setShowScanSuccess] = useState<boolean>(false);
   const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
+  const [showBTPrinterModal, setShowBTPrinterModal] = useState<boolean>(false);
 
   // Custom Toast State
   const [toast, setToast] = useState<{
@@ -682,48 +682,41 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
     handleResetPOS();
   };
 
-  const handleTriggerPrint = () => {
-    window.print();
-  };
-
   const handleBluetoothPrint = async () => {
-    if (!lastInvoice) {
-      window.print();
-      return;
-    }
+    if (!lastInvoice) return;
 
     const custName = customers.find(c => c.id === lastInvoice.customerId)?.name || 'Walk-In Customer';
-    const paperSz = getSavedPaperSize();
+    const paperSz = await getSavedPaperSize();
 
     try {
       triggerToast(
         currentLang === 'ur'
           ? 'بلیوٹوتھ تھرمل پرنٹر کو کمانڈ بھیجی جا رہی ہے...'
-          : 'Transmitting ESC/POS receipt payload via Bluetooth...',
+          : 'Transmitting ESC/POS thermal payload...',
         'info',
-        'Bluetooth Thermal Printer'
+        'Bluetooth Printer'
       );
       await printReceiptViaBluetooth(lastInvoice, settings, currency, custName, paperSz);
       triggerToast(
-        currentLang === 'ur' ? 'رسید کامیابی سے پرنٹ ہو گئی!' : 'Thermal receipt printed successfully via Bluetooth!',
+        currentLang === 'ur' ? 'رسید کامیابی سے پرنٹ ہو گئی!' : 'Receipt printed successfully via Bluetooth!',
         'success',
         'Print Complete'
       );
     } catch (err: any) {
-      console.error('Bluetooth thermal print error, opening fallback dialog:', err);
+      console.error('Bluetooth thermal print error:', err);
       triggerToast(
-        `Bluetooth printer: ${err.message || 'Device disconnected'}. Launching system print dialog.`,
+        `Bluetooth Printer: ${err.message || 'Printer not connected'}. Please pair your printer.`,
         'warning',
-        'Print Fallback'
+        'Printer Connection'
       );
-      window.print();
+      setShowBTPrinterModal(true);
     }
   };
 
   const handleSaveInvoiceToFile = async () => {
     if (!lastInvoice) return;
     
-    // Create beautifully formatted plain text receipt
+    // Formatted text receipt
     const content = `
 ========================================
        ${settings.shopName.toUpperCase()}
@@ -760,41 +753,15 @@ Change Return:     ${currency}${lastInvoice.changeAmount.toLocaleString().padSta
 ${settings.receiptFooter}
 ========================================
 `.trim();
-    const filename = `Invoice_${lastInvoice.invoiceNo}.txt`;
 
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const writeResult = await Filesystem.writeFile({
-          path: filename,
-          data: content,
-          directory: Directory.Cache,
-          encoding: Encoding.UTF8
-        });
+    triggerToast('Saving invoice text directly to device...', 'info', 'File Saver');
+    const result = await saveInvoiceTextDirect(lastInvoice.invoiceNo, content);
 
-        await Share.share({
-          title: `Invoice #${lastInvoice.invoiceNo}`,
-          text: `Plain text receipt for Invoice #${lastInvoice.invoiceNo}`,
-          url: writeResult.uri,
-          dialogTitle: 'Share Receipt text'
-        });
-        
-        addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} shared natively in TXT format`);
-      } catch (err: any) {
-        console.error('Failed to save/share native txt receipt:', err);
-      }
+    if (result.success) {
+      triggerToast(`Invoice saved successfully to ${result.displayPath}`, 'success', 'Saved Directly');
+      addLog('Save Bill Direct', `Saved text invoice to ${result.displayPath}`);
     } else {
-      const mimeType = 'text/plain';
-      const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} downloaded locally in TXT format`);
+      triggerToast(`Failed to save invoice text: ${result.error}`, 'error', 'Save Failed');
     }
   };
 
@@ -803,164 +770,54 @@ ${settings.receiptFooter}
     const element = document.getElementById('print-area');
     if (!element) return;
     try {
-      // Temporarily remove print-only styling limitations, render clean 2x scaled image
+      triggerToast('Generating receipt image...', 'info', 'File Saver');
+
       const canvas = await html2canvas(element, {
         useCORS: true,
-        scale: 2, // Perfect density for phone screens and tablets
+        scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc) => {
-          // 1. Sanitize all style tags by replacing oklch color functions with hex codes
           const styles = Array.from(clonedDoc.getElementsByTagName('style'));
           for (const style of styles) {
             try {
               let cssText = style.innerHTML;
               if (cssText.includes('oklch')) {
-                // Strip/replace oklch syntax which crashes html2canvas parser
                 cssText = cssText.replace(/oklch\([^)]+\)/g, '#475569');
                 style.innerHTML = cssText;
               }
-            } catch (err) {
-              console.warn('Could not sanitize style tag in cloned invoice:', err);
-            }
+            } catch (err) {}
           }
 
-          // 2. Add an explicit standard high-contrast invoice printing stylesheet to the mock document
           const safePrintOverride = clonedDoc.createElement('style');
           safePrintOverride.innerHTML = `
             #print-area {
               background-color: #ffffff !important;
               color: #000000 !important;
-              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+              font-family: system-ui, sans-serif !important;
             }
             #print-area * {
               background-color: transparent !important;
               color: #000000 !important;
-              border-color: #cbd5e1 !important;
-            }
-            #print-area h2 {
-              color: #000000 !important;
-              font-weight: 800 !important;
-            }
-            #print-area span, #print-area p {
-              color: #0f172a !important;
-            }
-            #print-area .text-slate-600, #print-area .text-slate-500, #print-area .text-slate-450 {
-              color: #475569 !important;
-            }
-            #print-area .text-rose-650, #print-area .text-emerald-650 {
-              color: #000000 !important;
-              font-weight: bold !important;
+              border-color: #000000 !important;
             }
           `;
           clonedDoc.head.appendChild(safePrintOverride);
-
-          // 3. Patch CSSStyleDeclaration prototype on the cloned document's window to safely handle oklch colors
-          if (clonedDoc.defaultView && (clonedDoc.defaultView as any).CSSStyleDeclaration) {
-            const proto = (clonedDoc.defaultView as any).CSSStyleDeclaration.prototype;
-            
-            // Patch getPropertyValue
-            const originalGetPropertyValue = proto.getPropertyValue;
-            if (originalGetPropertyValue) {
-              proto.getPropertyValue = function(prop: string) {
-                try {
-                  const val = originalGetPropertyValue.call(this, prop);
-                  if (typeof val === 'string' && val.includes('oklch')) {
-                    if (prop === 'background-color') {
-                      return '#ffffff';
-                    }
-                    if (prop.toLowerCase().includes('color')) {
-                      if (prop.toLowerCase().includes('border')) {
-                        return '#cbd5e1';
-                      }
-                      return '#0f172a';
-                    }
-                  }
-                  return val;
-                } catch (e) {
-                  return '';
-                }
-              };
-            }
-
-            // Patch individual standard property getters
-            const propsToPatch = ['color', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor'];
-            propsToPatch.forEach(propName => {
-              try {
-                const desc = Object.getOwnPropertyDescriptor(proto, propName) || 
-                             Object.getOwnPropertyDescriptor(Object.getPrototypeOf(proto), propName);
-                if (desc && desc.get) {
-                  const originalGet = desc.get;
-                  Object.defineProperty(proto, propName, {
-                    configurable: true,
-                    enumerable: true,
-                    get() {
-                      try {
-                        const val = originalGet.call(this);
-                        if (typeof val === 'string' && val.includes('oklch')) {
-                          if (propName === 'backgroundColor') {
-                            return '#ffffff';
-                          }
-                          if (propName.toLowerCase().includes('border')) {
-                            return '#cbd5e1';
-                          }
-                          return '#0f172a';
-                        }
-                        return val;
-                      } catch (e) {
-                        return '';
-                      }
-                    }
-                  });
-                } else {
-                  // Fallback: if no descriptor/getter, define a getter delegating to getPropertyValue
-                  Object.defineProperty(proto, propName, {
-                    configurable: true,
-                    enumerable: true,
-                    get() {
-                      const cssProp = propName.replace(/([A-Z])/g, '-$1').toLowerCase();
-                      return this.getPropertyValue(cssProp);
-                    }
-                  });
-                }
-              } catch (err) {
-                console.warn('Could not patch property getter ' + propName, err);
-              }
-            });
-          }
         }
       });
+
       const dataUrl = canvas.toDataURL('image/png');
-      const filename = `Invoice_${lastInvoice.invoiceNo}.png`;
+      const result = await saveInvoiceImageDirect(lastInvoice.invoiceNo, dataUrl);
 
-      if (Capacitor.isNativePlatform()) {
-        const rawBase64 = dataUrl.split(',')[1];
-        const writeResult = await Filesystem.writeFile({
-          path: filename,
-          data: rawBase64,
-          directory: Directory.Cache
-        });
-
-        await Share.share({
-          title: `Invoice #${lastInvoice.invoiceNo}`,
-          text: `Invoice graphic for order #${lastInvoice.invoiceNo}`,
-          url: writeResult.uri,
-          dialogTitle: 'Share Invoice Image'
-        });
-
-        addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} shared natively as image (PNG)`);
+      if (result.success) {
+        triggerToast(`Invoice image saved successfully to ${result.displayPath}`, 'success', 'Saved Directly');
+        addLog('Save Bill Direct', `Saved image invoice to ${result.displayPath}`);
       } else {
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        addLog('Save Bill Locally', `Invoice #${lastInvoice.invoiceNo} saved locally as image (PNG)`);
+        triggerToast(`Failed to save invoice image: ${result.error}`, 'error', 'Save Failed');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to capture receipt as image:', error);
+      triggerToast(`Image generation failed: ${error.message}`, 'error');
     }
   };
 
@@ -1628,89 +1485,110 @@ ${settings.receiptFooter}
             </div>
 
             {/* ACTUAL RENDERED PRINT RECEIPT AREA */}
-            <div className={`mx-auto bg-white text-black p-4 tracking-tight leading-normal ${receiptSize === '58mm' ? 'w-[280px] text-[10px]' : receiptSize === '80mm' ? 'w-[340px] text-xs' : 'w-full max-w-4xl text-sm'}`} id="print-area">
-              
-              <div className="text-center space-y-1.5 pb-4 border-b border-dashed border-slate-350">
-                <h2 className="text-lg font-black tracking-tight uppercase">{settings.shopName}</h2>
-                <p className="whitespace-pre-line text-[10px] leading-tight font-medium text-slate-600">{settings.address}</p>
-                <p className="text-[10px]">Contact: <strong>{settings.phone}</strong></p>
+            <div 
+              className={`mx-auto bg-white text-black p-4 tracking-tight leading-snug print-${receiptSize} ${
+                receiptSize === '58mm' ? 'w-[260px] text-xs' : receiptSize === '80mm' ? 'w-[320px] text-xs sm:text-sm' : 'w-full max-w-4xl text-sm'
+              }`} 
+              id="print-area"
+            >
+              {/* Receipt Header */}
+              <div className="text-center space-y-1 pb-3 border-b-2 border-dashed border-black">
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight uppercase text-black">{settings.shopName}</h2>
+                {settings.address && (
+                  <p className="whitespace-pre-line text-xs font-bold leading-tight text-black">{settings.address}</p>
+                )}
+                <p className="text-xs font-bold text-black">Contact: <strong>{settings.phone}</strong></p>
+                <div className="pt-1">
+                  <span className="inline-block bg-black text-white px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xs">
+                    OFFICIAL CASH RECEIPT
+                  </span>
+                </div>
               </div>
 
-              <div className="py-3 leading-snug space-y-1 text-[10px] border-b border-dashed border-slate-350 select-none">
+              {/* Invoice Meta details */}
+              <div className="py-2.5 leading-snug space-y-1 text-xs font-bold border-b-2 border-dashed border-black select-none text-black">
                 <div className="flex justify-between">
                   <span>{t.invoice}: <strong>#{lastInvoice.invoiceNo}</strong></span>
-                  <span>{t.date}: {new Date(lastInvoice.date).toLocaleDateString()} {new Date(lastInvoice.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                  <span>{new Date(lastInvoice.date).toLocaleDateString()} {new Date(lastInvoice.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>{t.customer}: {customers.find(c => c.id === lastInvoice.customerId)?.name || t.walk_in}</span>
-                  <span>{t.cashier_station}: Station #1</span>
+                  <span>{t.customer}: <strong>{customers.find(c => c.id === lastInvoice.customerId)?.name || t.walk_in}</strong></span>
+                  <span>POS Station #1</span>
                 </div>
               </div>
 
-              {/* Items List */}
-              <div className="py-3 border-b border-dashed border-slate-350">
-                <div className="grid grid-cols-12 font-bold mb-1.5 text-[10.5px]">
-                  <span className="col-span-6 truncate">{t.product_name}</span>
-                  <span className="col-span-2 text-center text-slate-500">{t.qty}</span>
+              {/* Items List Table */}
+              <div className="py-3 border-b-2 border-dashed border-black">
+                <div className="grid grid-cols-12 font-black mb-2 text-xs uppercase border-b border-black pb-1 text-black">
+                  <span className="col-span-6">{t.product_name}</span>
+                  <span className="col-span-2 text-center">{t.qty}</span>
                   <span className="col-span-2 text-right">{t.price}</span>
                   <span className="col-span-2 text-right">{t.total}</span>
                 </div>
 
-                <div className="space-y-1 text-[10.5px]">
+                <div className="space-y-2 text-xs sm:text-sm text-black">
                   {lastInvoice.items.map((it, i) => (
-                    <div key={i} className="grid grid-cols-12 leading-relaxed">
-                      <span className="col-span-6 truncate font-medium">{it.name}</span>
-                      <span className="col-span-2 text-center font-bold text-slate-600">{it.quantity}</span>
+                    <div key={i} className="grid grid-cols-12 leading-snug font-bold">
+                      <span className="col-span-6 font-extrabold truncate pr-1">{it.name}</span>
+                      <span className="col-span-2 text-center font-black">{it.quantity}</span>
                       <span className="col-span-2 text-right">{currency}{it.salePrice.toLocaleString()}</span>
-                      <span className="col-span-2 text-right font-bold">{currency}{it.total.toLocaleString()}</span>
+                      <span className="col-span-2 text-right font-black">{currency}{it.total.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Aggregation */}
-              <div className="py-3 space-y-1 text-right text-[11px] font-medium border-b border-dashed border-slate-350 leading-relaxed">
+              {/* Financial Aggregation */}
+              <div className="py-2.5 space-y-1.5 text-right text-xs sm:text-sm font-bold border-b-2 border-dashed border-black leading-relaxed text-black">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">{t.subtotal}</span>
-                  <span>{currency} {lastInvoice.subtotal.toLocaleString()}</span>
+                  <span>{t.subtotal}</span>
+                  <span className="font-black">{currency} {lastInvoice.subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">{t.sales_tax}</span>
-                  <span>{currency} {lastInvoice.tax.toLocaleString()}</span>
-                </div>
-                {lastInvoice.discount > 0 && (
-                  <div className="flex justify-between text-rose-650">
-                    <span>{t.discount_deduction}</span>
-                    <span>-{currency} {lastInvoice.discount.toLocaleString()}</span>
+                {lastInvoice.tax > 0 && (
+                  <div className="flex justify-between">
+                    <span>{t.sales_tax}</span>
+                    <span className="font-black">{currency} {lastInvoice.tax.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xs font-black pt-1">
+                {lastInvoice.discount > 0 && (
+                  <div className="flex justify-between">
+                    <span>{t.discount_deduction}</span>
+                    <span className="font-black">-{currency} {lastInvoice.discount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-base sm:text-lg font-black border-y-2 border-black py-2 my-1 uppercase text-black">
                   <span>{t.grand_total}</span>
                   <span>{currency} {lastInvoice.grandTotal.toLocaleString()}</span>
                 </div>
               </div>
 
-              <div className="py-3 text-[10px] space-y-1 border-b border-slate-205">
+              {/* Payment Details */}
+              <div className="py-2.5 text-xs font-bold space-y-1 border-b-2 border-black text-black">
                 <div className="flex justify-between">
                   <span>{t.paid_channels}: <strong>{lastInvoice.paymentMethod}</strong></span>
-                  <span>{t.received_amount}: {currency}{lastInvoice.receivedAmount.toLocaleString()}</span>
+                  <span>{t.received_amount}: <strong>{currency}{lastInvoice.receivedAmount.toLocaleString()}</strong></span>
                 </div>
-                <div className="flex justify-between text-emerald-650 font-bold">
-                  <span>{t.change_return}:</span>
-                  <span>{currency}{lastInvoice.changeAmount.toLocaleString()}</span>
-                </div>
+                {lastInvoice.changeAmount > 0 && (
+                  <div className="flex justify-between font-black text-sm pt-0.5">
+                    <span>{t.change_return}:</span>
+                    <span>{currency}{lastInvoice.changeAmount.toLocaleString()}</span>
+                  </div>
+                )}
               </div>
 
               {lastInvoice.notes && (
-                <div className="py-2.5 text-[9.5px] italic text-slate-500">
+                <div className="py-2 text-xs italic font-bold text-black border-b border-black">
                   {t.remarks}: {lastInvoice.notes}
                 </div>
               )}
 
-              <div className="text-center pt-4 space-y-1 select-none">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">*** {t.thank_you} ***</p>
-                <p className="text-[9px] leading-normal text-slate-450">{settings.receiptFooter}</p>
-                <p className="text-[8px] text-slate-350 mt-1">{t.pos_offline}</p>
+              {/* Footer */}
+              <div className="text-center pt-3 space-y-1 select-none text-black">
+                <p className="text-xs font-black uppercase tracking-widest">*** {t.thank_you} ***</p>
+                {settings.receiptFooter && (
+                  <p className="text-xs font-bold leading-tight">{settings.receiptFooter}</p>
+                )}
+                <p className="text-[10px] font-semibold opacity-80 mt-1">{t.pos_offline}</p>
               </div>
 
             </div>
@@ -1744,24 +1622,24 @@ ${settings.receiptFooter}
               <div className="space-y-2">
                 <button
                   onClick={handleBluetoothPrint}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 text-xs tracking-wider rounded-xl transition shadow flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 text-xs tracking-wider uppercase rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
                   <Bluetooth className="w-4 h-4 text-white" />
-                  <span>{currentLang === 'ur' ? 'بلیوٹوتھ تھرمل پرنٹ' : 'Print via Bluetooth (ESC/POS)'}</span>
+                  <span>{currentLang === 'ur' ? 'بلیوٹوتھ تھرمل پرنٹ' : 'Print via Bluetooth'}</span>
                 </button>
 
                 <button
-                  onClick={handleTriggerPrint}
-                  className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold py-2.5 text-xs tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  onClick={() => setShowBTPrinterModal(true)}
+                  className="w-full py-2 text-[11px] font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 flex items-center justify-center gap-1 transition cursor-pointer"
                 >
-                  <Printer className="w-4 h-4 text-slate-500" />
-                  <span>{currentLang === 'ur' ? 'سسٹم / A4 پرنٹ' : 'System Print / PDF Fallback'}</span>
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>Configure Thermal Printer (58mm/80mm)</span>
                 </button>
               </div>
               
               <button
                 onClick={() => setShowReceipt(false)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 text-xs rounded-xl transition cursor-pointer"
+                className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-2.5 text-xs rounded-xl transition cursor-pointer"
               >
                 {t.close_receipt_view}
               </button>
@@ -1770,6 +1648,14 @@ ${settings.receiptFooter}
           </div>
         </div>
       )}
+
+      {/* Bluetooth Printer Pairing Modal */}
+      <BluetoothPrinterModal
+        isOpen={showBTPrinterModal}
+        onClose={() => setShowBTPrinterModal(false)}
+        settings={settings}
+        triggerToast={triggerToast}
+      />
       {/* Floating Scan Success Toast */}
       {showScanSuccess && !toast && (
         <div className="fixed bottom-6 right-6 z-[100] bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 font-bold border border-emerald-500 animate-fade-in">

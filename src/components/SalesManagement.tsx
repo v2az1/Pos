@@ -125,13 +125,13 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
   const handleBluetoothReprint = async () => {
     if (!activeReprintSale) return;
     const custName = customers.find(c => c.id === activeReprintSale.customerId)?.name || 'Walk-In Customer';
-    const paperSz = getSavedPaperSize();
+    const paperSz = await getSavedPaperSize();
 
     try {
       await printReceiptViaBluetooth(activeReprintSale, settings, currency, custName, paperSz);
     } catch (err: any) {
-      console.error('Bluetooth reprint failed, falling back to system print:', err);
-      window.print();
+      console.error('Bluetooth reprint error:', err);
+      alert(`Bluetooth print error: ${err.message || 'Printer not connected'}`);
     }
   };
 
@@ -273,37 +273,44 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
             </div>
 
             {/* Reprint content */}
-            <div className="bg-white text-black p-2 font-sans text-xs tracking-tight leading-normal max-h-[460px] overflow-y-auto pr-1" id="reprint-ticket-box">
-              <div className="text-center space-y-1.5 pb-4 border-b border-dashed border-slate-300">
-                <h2 className="text-base font-black tracking-wider uppercase">{settings.shopName}</h2>
-                <p className="text-[10px] whitespace-pre-line text-slate-500 leading-tight">{settings.address}</p>
-                <p className="text-[10px]">Contact: <strong>{settings.phone}</strong></p>
+            <div className="bg-white text-black p-4 font-sans text-xs tracking-tight leading-snug max-h-[480px] overflow-y-auto pr-1" id="reprint-ticket-box">
+              <div className="text-center space-y-1 pb-3 border-b-2 border-dashed border-black">
+                <h2 className="text-xl font-black tracking-tight uppercase text-black">{settings.shopName}</h2>
+                {settings.address && (
+                  <p className="whitespace-pre-line text-xs font-bold leading-tight text-black">{settings.address}</p>
+                )}
+                <p className="text-xs font-bold text-black">Contact: <strong>{settings.phone}</strong></p>
+                <div className="pt-1">
+                  <span className="inline-block bg-black text-white px-2 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-xs">
+                    REPRINT DUPLICATE COPY
+                  </span>
+                </div>
               </div>
 
-              <div className="py-2.5 space-y-0.5 text-[10.5px] block border-b border-dashed border-slate-300">
+              <div className="py-2.5 space-y-1 text-xs font-bold border-b-2 border-dashed border-black text-black">
                 <div className="flex justify-between">
                   <span>Voucher: <strong>#{activeReprintSale.invoiceNo}</strong></span>
                   <span>Date: {new Date(activeReprintSale.date).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Customer: {customers.find(c => c.id === activeReprintSale.customerId)?.name || 'Walk-In'}</span>
-                  <span>Account: <strong>Offline Store</strong></span>
+                  <span>Customer: <strong>{customers.find(c => c.id === activeReprintSale.customerId)?.name || 'Walk-In'}</strong></span>
+                  <span>POS Station #1</span>
                 </div>
               </div>
 
               {/* Items */}
-              <div className="py-2.5 border-b border-dashed border-slate-300 text-[10.5px]">
-                <div className="grid grid-cols-12 font-bold mb-1 border-b pb-1">
+              <div className="py-3 border-b-2 border-dashed border-black">
+                <div className="grid grid-cols-12 font-black mb-2 text-xs uppercase border-b border-black pb-1 text-black">
                   <span className="col-span-6">Catalog Item</span>
                   <span className="col-span-2 text-center">Qty</span>
                   <span className="col-span-2 text-right">Price</span>
-                  <span className="col-span-2 text-right">Sum</span>
+                  <span className="col-span-2 text-right">Total</span>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2 text-xs sm:text-sm text-black">
                   {activeReprintSale.items.map((it, idx) => (
-                    <div key={idx} className="grid grid-cols-12 leading-relaxed">
-                      <span className="col-span-6 truncate font-medium">{it.name}</span>
-                      <span className="col-span-2 text-center font-bold">{it.quantity}</span>
+                    <div key={idx} className="grid grid-cols-12 leading-snug font-bold">
+                      <span className="col-span-6 font-extrabold truncate pr-1">{it.name}</span>
+                      <span className="col-span-2 text-center font-black">{it.quantity}</span>
                       <span className="col-span-2 text-right">{currency}{it.salePrice.toLocaleString()}</span>
                       <span className="col-span-2 text-right font-black">{currency}{it.total.toLocaleString()}</span>
                     </div>
@@ -312,43 +319,46 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
               </div>
 
               {/* Totals */}
-              <div className="py-2.5 text-right space-y-1 text-[10.5px] border-b border-dashed border-slate-300">
+              <div className="py-2.5 text-right space-y-1.5 text-xs sm:text-sm font-bold border-b-2 border-dashed border-black text-black">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Subtotal value</span>
-                  <span>{currency} {activeReprintSale.subtotal.toLocaleString()}</span>
+                  <span>Subtotal Value</span>
+                  <span className="font-black">{currency} {activeReprintSale.subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Sales Tax rate</span>
-                  <span>{currency} {activeReprintSale.tax.toLocaleString()}</span>
-                </div>
-                {activeReprintSale.discount > 0 && (
-                  <div className="flex justify-between text-rose-650 font-bold">
-                    <span>Discount Offset</span>
-                    <span>-{currency} {activeReprintSale.discount.toLocaleString()}</span>
+                {activeReprintSale.tax > 0 && (
+                  <div className="flex justify-between">
+                    <span>Sales Tax</span>
+                    <span className="font-black">{currency} {activeReprintSale.tax.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xs font-black pt-1">
+                {activeReprintSale.discount > 0 && (
+                  <div className="flex justify-between">
+                    <span>Discount Deduction</span>
+                    <span className="font-black">-{currency} {activeReprintSale.discount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-base font-black border-y-2 border-black py-2 my-1 uppercase text-black">
                   <span>INVOICE GRAND TOTAL</span>
                   <span>{currency} {activeReprintSale.grandTotal.toLocaleString()}</span>
                 </div>
               </div>
 
-              <div className="py-2 text-[10px]">
+              <div className="py-2.5 text-xs font-bold border-b-2 border-black text-black space-y-1">
                 <div className="flex justify-between">
                   <span>Method: <strong>{activeReprintSale.paymentMethod}</strong></span>
-                  <span>Change return: {currency}{activeReprintSale.changeAmount.toLocaleString()}</span>
+                  <span>Change Return: <strong>{currency}{activeReprintSale.changeAmount.toLocaleString()}</strong></span>
                 </div>
-                <div className="flex justify-between items-center text-[11px] font-bold pt-1.5 leading-relaxed text-indigo-705">
-                  <span>Billing Registry Status:</span>
-                  <span className={activeReprintSale.status === 'Returned' ? "text-rose-650" : "text-emerald-650"}>
+                <div className="flex justify-between items-center text-xs font-black pt-1">
+                  <span>Registry Status:</span>
+                  <span className={activeReprintSale.status === 'Returned' ? "text-rose-600 font-black" : "text-emerald-700 font-black"}>
                     {activeReprintSale.status === 'Returned' ? 'REFUNDED OR RETURNED' : 'PAID & ARCHIVED'}
                   </span>
                 </div>
               </div>
 
-              <div className="text-center pt-3 text-[9px] text-slate-400 border-t mt-4 leading-normal select-none">
-                <p>Duplicate Print Voucher Copy.</p>
-                <p>{settings.receiptFooter}</p>
+              <div className="text-center pt-3 text-xs font-bold text-black select-none space-y-0.5">
+                <p className="uppercase tracking-widest font-black">*** THANK YOU ***</p>
+                {settings.receiptFooter && <p>{settings.receiptFooter}</p>}
+                <p className="text-[10px] opacity-75">Duplicate Print Voucher Copy</p>
               </div>
             </div>
 
@@ -356,15 +366,10 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
             <div className="mt-6 flex flex-col gap-2 print:hidden">
               <button
                 onClick={handleBluetoothReprint}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 text-xs uppercase tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5 active:scale-98"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 text-xs uppercase tracking-wider rounded-xl transition shadow flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
-                <Bluetooth className="w-4 h-4 text-white" /> Print via Bluetooth (ESC/POS)
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 text-xs rounded-xl transition flex items-center justify-center gap-1.5"
-              >
-                <Printer className="w-4 h-4 text-slate-500" /> System / Standard Print
+                <Bluetooth className="w-4 h-4 text-white" />
+                <span>Print via Bluetooth</span>
               </button>
               {activeReprintSale.status !== 'Returned' && (
                 <button

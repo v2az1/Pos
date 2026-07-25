@@ -7,14 +7,12 @@ import { DBState, addLog } from '../db';
 import { ShopSettings } from '../types';
 import { translations } from '../lib/translations';
 import { 
-  isBluetoothSupported, 
-  getSavedPrinterDeviceName, 
+  getSavedPrinter, 
   getSavedPaperSize, 
   savePaperSize, 
-  connectBluetoothPrinter, 
-  disconnectBluetoothPrinter, 
-  printTestReceiptViaBluetooth,
-  isPrinterConnected
+  scanAndSelectPrinter, 
+  forgetPrinter, 
+  printTestReceiptViaBluetooth
 } from '../lib/bluetoothPrinter';
 
 interface SettingsProps {
@@ -38,20 +36,29 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
   const [msg, setMsg] = useState<string | null>(null);
 
   // Bluetooth printer states
-  const [btPrinterName, setBtPrinterName] = useState<string>(getSavedPrinterDeviceName());
-  const [paperSize, setPaperSizeState] = useState<'58mm' | '80mm' | 'A4'>(getSavedPaperSize());
+  const [btPrinterName, setBtPrinterName] = useState<string>('');
+  const [paperSize, setPaperSizeState] = useState<'58mm' | '80mm'>('58mm');
   const [btStatus, setBtStatus] = useState<string>('');
   const [isBtConnecting, setIsBtConnecting] = useState<boolean>(false);
 
   const currentLang = formData.language || 'en';
   const t = translations[currentLang];
 
+  React.useEffect(() => {
+    (async () => {
+      const p = await getSavedPrinter();
+      const sz = await getSavedPaperSize();
+      if (p) setBtPrinterName(p.name);
+      setPaperSizeState(sz);
+    })();
+  }, []);
+
   const handleConnectBT = async () => {
     setIsBtConnecting(true);
     setBtStatus('');
     try {
-      const devName = await connectBluetoothPrinter();
-      setBtPrinterName(devName);
+      const dev = await scanAndSelectPrinter();
+      setBtPrinterName(dev.name);
       setBtStatus(currentLang === 'ur' ? 'بلیوٹوتھ پرنٹر کامیابی سے منسلک ہو گیا!' : 'Bluetooth printer paired successfully!');
     } catch (err: any) {
       setBtStatus(err.message || 'Bluetooth connection failed.');
@@ -61,7 +68,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
   };
 
   const handleDisconnectBT = async () => {
-    await disconnectBluetoothPrinter();
+    await forgetPrinter();
     setBtPrinterName('');
     setBtStatus(currentLang === 'ur' ? 'پرنٹر منقطع ہو گیا' : 'Bluetooth printer disconnected.');
   };
@@ -69,16 +76,16 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
   const handleTestBTPrint = async () => {
     try {
       setBtStatus('Sending ESC/POS diagnostic buffer to printer...');
-      await printTestReceiptViaBluetooth(formData);
+      await printTestReceiptViaBluetooth(formData, paperSize);
       setBtStatus(currentLang === 'ur' ? 'ٹیسٹ پرنٹ کامیابی سے بھیج دیا گیا!' : 'Test receipt sent successfully to thermal printer!');
     } catch (err: any) {
       setBtStatus(`Test print error: ${err.message}`);
     }
   };
 
-  const handlePaperSizeChange = (sz: '58mm' | '80mm' | 'A4') => {
+  const handlePaperSizeChange = async (sz: '58mm' | '80mm') => {
     setPaperSizeState(sz);
-    savePaperSize(sz);
+    await savePaperSize(sz);
   };
 
   const handleSaveSettings = (e: React.FormEvent) => {
@@ -417,7 +424,7 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
                 {currentLang === 'ur' ? 'تھرمل پیپر کا سائز' : 'Receipt Paper Size & Protocol'}
               </label>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handlePaperSizeChange('58mm')}
@@ -440,18 +447,6 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
                   }`}
                 >
                   80mm (3 Inch)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handlePaperSizeChange('A4')}
-                  className={`py-2 px-2 text-center rounded-xl text-xs font-extrabold border transition ${
-                    paperSize === 'A4'
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  Standard A4
                 </button>
               </div>
 
