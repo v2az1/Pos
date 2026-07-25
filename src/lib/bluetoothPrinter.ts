@@ -1,37 +1,64 @@
 /**
- * Native Bluetooth ESC/POS Thermal Printer Utility for Capacitor Android POS
- * Handles Bluetooth permissions, device scanning, persistent pairing memory,
- * auto-reconnect, and professional thermal receipt formatting for 58mm / 80mm printers.
+ * Native Bluetooth ESC/POS Thermal Printer Engine
+ * Compatible with Capacitor 7/8 and Android 11–16
+ * Supports Android 12+ permissions (BLUETOOTH_CONNECT, BLUETOOTH_SCAN),
+ * enumerating paired devices, direct SPP socket connections via MAC address,
+ * and step-by-step detailed diagnostic logging.
  */
 
 import { Preferences } from '@capacitor/preferences';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Sale, ShopSettings } from '../types';
 
 export interface BluetoothPrinterDevice {
   id: string;
   name: string;
   address?: string;
+  bonded?: boolean;
   connected?: boolean;
+  type?: number;
 }
+
+export interface NativeBluetoothPrinterPlugin {
+  checkAndRequestPermissions(): Promise<{ granted: boolean; logs: string[] }>;
+  getBluetoothStatus(): Promise<{ available: boolean; enabled: boolean; permissionGranted: boolean; logs: string[] }>;
+  getPairedDevices(): Promise<{ success: boolean; devices: BluetoothPrinterDevice[]; error?: string; logs: string[] }>;
+  printRawBytes(options: { address: string; bytesBase64: string }): Promise<{ success: boolean; message?: string; error?: string; logs: string[] }>;
+}
+
+// Register custom Capacitor native plugin bridge
+const NativeBTPrinter = registerPlugin<NativeBluetoothPrinterPlugin>('BluetoothPrinter');
 
 const PRINTER_STORAGE_KEY = 'pos_bt_thermal_printer_device';
 const PAPER_SIZE_STORAGE_KEY = 'pos_bt_thermal_paper_size';
 
-// Standard Bluetooth GATT Thermal Printer Service UUIDs
+// In-memory diagnostic log collector
+let globalPrinterLogs: string[] = [];
+
+export const getPrinterLogs = (): string[] => [...globalPrinterLogs];
+export const clearPrinterLogs = (): void => { globalPrinterLogs = []; };
+export const addPrinterLog = (msg: string): void => {
+  const timestamp = new Date().toLocaleTimeString();
+  const entry = `[${timestamp}] ${msg}`;
+  globalPrinterLogs.push(entry);
+  console.log(entry);
+};
+
+// Web Bluetooth GATT Printer Service UUIDs
 const PRINTER_SERVICE_UUIDS = [
-  '000018f0-0000-1000-8000-00805f9b34fb', // ESC/POS Standard
-  '0000ff00-0000-1000-8000-00805f9b34fb', // Thermal Vendor Service
-  '00001101-0000-1000-8000-00805f9b34fb', // Serial Port Profile (SPP)
-  '00004953-0000-1000-8000-00805f9b34fb', // ISSC SPP
-  'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // Zebra / Portable Thermal Service
-  '0000180a-0000-1000-8000-00805f9b34fb'  // Device Info Service
+  '000018f0-0000-1000-8000-00805f9b34fb',
+  '0000ff00-0000-1000-8000-00805f9b34fb',
+  '00001101-0000-1000-8000-00805f9b34fb', // SPP UUID
+  '00004953-0000-1000-8000-00805f9b34fb',
+  'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+  '0000180a-0000-1000-8000-00805f9b34fb'
 ];
 
-let activeDeviceHandle: any = null;
-let activeCharacteristicHandle: any = null;
+let webActiveDeviceHandle: any = null;
+let webActiveCharHandle: any = null;
 
 /**
- * Get saved paper size configuration
+ * Get saved paper size preference
  */
 export const getSavedPaperSize = async (): Promise<'58mm' | '80mm'> => {
   try {
@@ -46,18 +73,19 @@ export const getSavedPaperSize = async (): Promise<'58mm' | '80mm'> => {
 };
 
 /**
- * Save paper size configuration
+ * Save paper size preference
  */
 export const savePaperSize = async (size: '58mm' | '80mm'): Promise<void> => {
   try {
     await Preferences.set({ key: PAPER_SIZE_STORAGE_KEY, value: size });
+    addPrinterLog(`Paper size saved as ${size}`);
   } catch (e) {
     console.error('Failed saving paper size preference:', e);
   }
 };
 
 /**
- * Get remembered Bluetooth printer
+ * Get saved Bluetooth printer device from storage
  */
 export const getSavedPrinter = async (): Promise<BluetoothPrinterDevice | null> => {
   try {
@@ -72,217 +100,312 @@ export const getSavedPrinter = async (): Promise<BluetoothPrinterDevice | null> 
 };
 
 /**
- * Save remembered Bluetooth printer
+ * Save default selected Bluetooth printer
  */
 export const savePrinter = async (device: BluetoothPrinterDevice): Promise<void> => {
   try {
     await Preferences.set({
       key: PRINTER_STORAGE_KEY,
-      value: JSON.stringify({ id: device.id, name: device.name, address: device.address })
+      value: JSON.stringify({
+        id: device.id,
+        name: device.name,
+        address: device.address || device.id,
+        bonded: true
+      })
     });
+    addPrinterLog(`Saved active printer: ${device.name} (${device.address || device.id})`);
   } catch (e) {
     console.error('Failed saving printer preference:', e);
   }
 };
 
 /**
- * Remove remembered Bluetooth printer
+ * Forget saved printer
  */
 export const forgetPrinter = async (): Promise<void> => {
   try {
     await Preferences.remove({ key: PRINTER_STORAGE_KEY });
-    await disconnectPrinter();
+    webActiveDeviceHandle = null;
+    webActiveCharHandle = null;
+    addPrinterLog('Cleared saved Bluetooth printer memory.');
   } catch (e) {
     console.error('Failed removing saved printer preference:', e);
   }
 };
 
 /**
- * Check if a printer GATT connection is active
+ * Get Bluetooth adapter status & runtime permissions
  */
-export const isPrinterConnected = (): boolean => {
-  return !!(activeDeviceHandle && activeDeviceHandle.gatt && activeDeviceHandle.gatt.connected);
-};
+export const getBluetoothStatus = async (): Promise<{
+  available: boolean;
+  enabled: boolean;
+  permissionGranted: boolean;
+  logs: string[];
+}> => {
+  clearPrinterLogs();
+  addPrinterLog('Checking Bluetooth hardware & runtime permission status...');
 
-/**
- * Disconnect current active printer
- */
-export const disconnectPrinter = async (): Promise<void> => {
-  if (activeDeviceHandle && activeDeviceHandle.gatt) {
+  if (Capacitor.isNativePlatform()) {
     try {
-      await activeDeviceHandle.gatt.disconnect();
-    } catch (e) {
-      console.warn('Disconnect error:', e);
+      const res = await NativeBTPrinter.getBluetoothStatus();
+      if (res.logs && Array.isArray(res.logs)) {
+        res.logs.forEach(l => addPrinterLog(l));
+      }
+      return res;
+    } catch (err: any) {
+      addPrinterLog(`Native Bluetooth status check warning: ${err.message}`);
+      return { available: true, enabled: true, permissionGranted: true, logs: getPrinterLogs() };
     }
+  } else {
+    const nav = navigator as any;
+    const available = !!nav.bluetooth;
+    addPrinterLog(`Web Bluetooth API available: ${available}`);
+    return {
+      available,
+      enabled: available,
+      permissionGranted: available,
+      logs: getPrinterLogs()
+    };
   }
-  activeDeviceHandle = null;
-  activeCharacteristicHandle = null;
 };
 
 /**
- * Scan for nearby Bluetooth thermal printers
- * Requests Web Bluetooth / Native Android GATT permission dialog
+ * Enumerate already paired/bonded Bluetooth devices from Android system settings
+ */
+export const getPairedBluetoothDevices = async (): Promise<{
+  success: boolean;
+  devices: BluetoothPrinterDevice[];
+  error?: string;
+  logs: string[];
+}> => {
+  clearPrinterLogs();
+  addPrinterLog('Querying paired ESC/POS thermal printers from Android OS...');
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      // 1. Request Android 12+ permissions first if not granted
+      addPrinterLog('Step 1: Validating Android BLUETOOTH_CONNECT & SCAN permissions...');
+      const permRes = await NativeBTPrinter.checkAndRequestPermissions();
+      if (permRes.logs && Array.isArray(permRes.logs)) {
+        permRes.logs.forEach(l => addPrinterLog(l));
+      }
+
+      if (!permRes.granted) {
+        addPrinterLog('ERROR: Bluetooth permissions were not granted by user.');
+        return {
+          success: false,
+          devices: [],
+          error: 'Bluetooth permissions required. Please allow permissions when prompted.',
+          logs: getPrinterLogs()
+        };
+      }
+
+      // 2. Query paired devices
+      addPrinterLog('Step 2: Retrieving bonded Bluetooth devices via Android BluetoothAdapter...');
+      const pairedRes = await NativeBTPrinter.getPairedDevices();
+      if (pairedRes.logs && Array.isArray(pairedRes.logs)) {
+        pairedRes.logs.forEach(l => addPrinterLog(l));
+      }
+
+      if (pairedRes.success && pairedRes.devices) {
+        addPrinterLog(`Successfully loaded ${pairedRes.devices.length} paired Bluetooth device(s).`);
+        return {
+          success: true,
+          devices: pairedRes.devices,
+          logs: getPrinterLogs()
+        };
+      } else {
+        return {
+          success: false,
+          devices: [],
+          error: pairedRes.error || 'Failed retrieving paired Bluetooth devices.',
+          logs: getPrinterLogs()
+        };
+      }
+    } catch (err: any) {
+      addPrinterLog(`Error fetching paired devices: ${err.message}`);
+      return {
+        success: false,
+        devices: [],
+        error: err.message || 'Error querying paired Bluetooth devices.',
+        logs: getPrinterLogs()
+      };
+    }
+  } else {
+    // Web environment fallback
+    addPrinterLog('Web browser mode: checking saved device or Web Bluetooth scanner...');
+    const saved = await getSavedPrinter();
+    const mockList: BluetoothPrinterDevice[] = saved ? [saved] : [];
+    return {
+      success: true,
+      devices: mockList,
+      logs: getPrinterLogs()
+    };
+  }
+};
+
+/**
+ * Scan & Pair a Bluetooth Printer
+ * For native Android: Returns list of paired devices or initiates pairing
+ * For Web: Triggers browser requestDevice dialog
  */
 export const scanAndSelectPrinter = async (): Promise<BluetoothPrinterDevice> => {
-  if (typeof window === 'undefined') {
-    throw new Error('Bluetooth scanner requires browser runtime environment.');
-  }
+  addPrinterLog('Initiating Bluetooth printer scan/select process...');
 
-  const nav = navigator as any;
+  if (Capacitor.isNativePlatform()) {
+    // 1. Query paired devices first
+    const res = await getPairedBluetoothDevices();
+    if (res.success && res.devices.length > 0) {
+      addPrinterLog(`Found ${res.devices.length} paired device(s). Prompting user to select printer.`);
+      // Default to first paired printer if auto-selecting, or user selects in modal
+      const firstDev = res.devices[0];
+      await savePrinter(firstDev);
+      return firstDev;
+    }
 
-  if (!nav.bluetooth) {
-    throw new Error('Bluetooth is disabled or not supported on this device. Please turn on Bluetooth in Android Settings.');
-  }
+    if (res.error) {
+      throw new Error(res.error);
+    }
 
-  try {
-    console.log('[NativeBTPrinter] Requesting Bluetooth scan...');
+    throw new Error('No paired Bluetooth printers found in Android Settings. Please pair your ESC/POS thermal printer in Android Bluetooth settings first.');
+  } else {
+    // Web Bluetooth flow
+    const nav = navigator as any;
+    if (!nav.bluetooth) {
+      throw new Error('Web Bluetooth is not supported on this web browser. Use Chrome or Android native build.');
+    }
 
-    // Request Bluetooth device pairing
+    addPrinterLog('Opening browser Bluetooth device scan chooser...');
     const device = await nav.bluetooth.requestDevice({
       acceptAllDevices: true,
       optionalServices: PRINTER_SERVICE_UUIDS
     });
 
     if (!device) {
-      throw new Error('No Bluetooth thermal printer was chosen.');
+      throw new Error('No Bluetooth device selected.');
     }
 
-    const printerObj: BluetoothPrinterDevice = {
+    const devObj: BluetoothPrinterDevice = {
       id: device.id,
-      name: device.name || 'Bluetooth Thermal Printer',
-      address: device.id
+      name: device.name || 'Bluetooth ESC/POS Printer',
+      address: device.id,
+      bonded: true
     };
 
-    // Connect GATT server immediately to verify characteristic capability
-    await connectDeviceGATT(device);
+    // Connect Web GATT
+    addPrinterLog(`Connecting GATT server to ${devObj.name}...`);
+    const server = await device.gatt.connect();
 
-    // Persist as default POS printer
-    await savePrinter(printerObj);
-
-    return printerObj;
-  } catch (err: any) {
-    console.error('[NativeBTPrinter] Scan error:', err);
-    throw new Error(err.message || 'Failed to discover Bluetooth thermal printers.');
-  }
-};
-
-/**
- * Connect to device GATT server & locate write characteristic
- */
-const connectDeviceGATT = async (device: any): Promise<void> => {
-  if (!device || !device.gatt) {
-    throw new Error('Invalid Bluetooth device handle.');
-  }
-
-  console.log(`[NativeBTPrinter] Connecting GATT server to ${device.name}...`);
-  const server = await device.gatt.connect();
-
-  let printableChar: any = null;
-
-  // Search standard printer service UUIDs
-  for (const uuid of PRINTER_SERVICE_UUIDS) {
-    try {
-      const service = await server.getPrimaryService(uuid);
-      const chars = await service.getCharacteristics();
-      for (const char of chars) {
-        if (char.properties.write || char.properties.writeWithoutResponse) {
-          printableChar = char;
-          break;
-        }
-      }
-    } catch (e) {}
-    if (printableChar) break;
-  }
-
-  // Fallback: search all primary services
-  if (!printableChar) {
-    try {
-      const services = await server.getPrimaryServices();
-      for (const service of services) {
-        try {
-          const chars = await service.getCharacteristics();
-          for (const char of chars) {
-            if (char.properties.write || char.properties.writeWithoutResponse) {
-              printableChar = char;
-              break;
-            }
+    let printableChar: any = null;
+    for (const uuid of PRINTER_SERVICE_UUIDS) {
+      try {
+        const service = await server.getPrimaryService(uuid);
+        const chars = await service.getCharacteristics();
+        for (const c of chars) {
+          if (c.properties.write || c.properties.writeWithoutResponse) {
+            printableChar = c;
+            break;
           }
-        } catch (e) {}
-        if (printableChar) break;
-      }
-    } catch (e) {}
-  }
-
-  if (!printableChar) {
-    throw new Error('Connected to Bluetooth device, but no ESC/POS writeable GATT characteristic was found.');
-  }
-
-  activeDeviceHandle = device;
-  activeCharacteristicHandle = printableChar;
-
-  device.addEventListener('gattserverdisconnected', () => {
-    console.warn('[NativeBTPrinter] Bluetooth printer GATT disconnected');
-    activeDeviceHandle = null;
-    activeCharacteristicHandle = null;
-  });
-};
-
-/**
- * Ensure printer is connected, auto-reconnecting to remembered device if disconnected
- */
-export const ensureConnected = async (): Promise<void> => {
-  if (isPrinterConnected()) {
-    return;
-  }
-
-  const saved = await getSavedPrinter();
-  if (!saved) {
-    // Prompt user to scan & pair printer
-    await scanAndSelectPrinter();
-    return;
-  }
-
-  // Attempt auto reconnect
-  const nav = navigator as any;
-  if (!nav.bluetooth) {
-    throw new Error('Bluetooth is not available. Please enable Bluetooth on your device.');
-  }
-
-  try {
-    console.log(`[NativeBTPrinter] Auto reconnecting to saved printer: ${saved.name}...`);
-    // Re-trigger device selection / reconnect
-    await scanAndSelectPrinter();
-  } catch (err: any) {
-    throw new Error(`Auto reconnect to ${saved.name} failed. Please pair printer again: ${err.message}`);
-  }
-};
-
-/**
- * Transmit ESC/POS binary data chunked to printer
- */
-export const transmitESCPOSToPrinter = async (data: Uint8Array): Promise<void> => {
-  await ensureConnected();
-
-  if (!activeCharacteristicHandle) {
-    throw new Error('Bluetooth printer characteristic is not ready.');
-  }
-
-  // Send in 100-byte chunks to fit GATT MTU size limits safely
-  const CHUNK_SIZE = 100;
-  for (let offset = 0; offset < data.length; offset += CHUNK_SIZE) {
-    const chunk = data.slice(offset, offset + CHUNK_SIZE);
-    if (activeCharacteristicHandle.properties.writeWithoutResponse) {
-      await activeCharacteristicHandle.writeValueWithoutResponse(chunk);
-    } else {
-      await activeCharacteristicHandle.writeValue(chunk);
+        }
+      } catch (e) {}
+      if (printableChar) break;
     }
-    // Short hardware delay between packet bursts
-    await new Promise(resolve => setTimeout(resolve, 25));
+
+    if (!printableChar) {
+      throw new Error('Connected to Bluetooth device, but no ESC/POS writeable GATT characteristic was found.');
+    }
+
+    webActiveDeviceHandle = device;
+    webActiveCharHandle = printableChar;
+
+    await savePrinter(devObj);
+    return devObj;
   }
 };
 
 /**
- * ESC/POS Command Byte Definitions
+ * Transmit ESC/POS binary payload to printer
+ * Uses direct MAC address & SPP UUID socket connection on Android
+ */
+export const transmitESCPOSToPrinter = async (data: Uint8Array, targetAddress?: string): Promise<void> => {
+  clearPrinterLogs();
+  addPrinterLog(`Preparing to transmit ${data.length} bytes of ESC/POS commands...`);
+
+  let address = targetAddress;
+  if (!address) {
+    const saved = await getSavedPrinter();
+    if (saved) {
+      address = saved.address || saved.id;
+    }
+  }
+
+  if (Capacitor.isNativePlatform()) {
+    if (!address) {
+      addPrinterLog('No paired printer selected. Attempting to fetch paired devices list...');
+      const pairedRes = await getPairedBluetoothDevices();
+      if (pairedRes.success && pairedRes.devices.length > 0) {
+        const first = pairedRes.devices[0];
+        address = first.address || first.id;
+        await savePrinter(first);
+      } else {
+        throw new Error('No paired Bluetooth thermal printer found. Please pair printer in Android settings.');
+      }
+    }
+
+    addPrinterLog(`Target Printer Address: ${address}`);
+
+    // Convert Uint8Array to base64
+    let binaryStr = '';
+    const len = data.byteLength;
+    for (let i = 0; i < len; i++) {
+      binaryStr += String.fromCharCode(data[i]);
+    }
+    const base64Data = btoa(binaryStr);
+
+    addPrinterLog('Invoking Native Android Bluetooth Printer Plugin...');
+    const printRes = await NativeBTPrinter.printRawBytes({
+      address: address!,
+      bytesBase64: base64Data
+    });
+
+    if (printRes.logs && Array.isArray(printRes.logs)) {
+      printRes.logs.forEach(l => addPrinterLog(l));
+    }
+
+    if (!printRes.success) {
+      throw new Error(printRes.error || 'Failed sending raw print commands to Bluetooth printer.');
+    }
+
+    addPrinterLog('Print operation completed successfully!');
+    return;
+  } else {
+    // Web Bluetooth transmission
+    addPrinterLog('Transmitting via Web Bluetooth GATT...');
+    if (!webActiveCharHandle) {
+      await scanAndSelectPrinter();
+    }
+
+    if (!webActiveCharHandle) {
+      throw new Error('Web Bluetooth printer characteristic is not ready.');
+    }
+
+    const CHUNK_SIZE = 100;
+    for (let offset = 0; offset < data.length; offset += CHUNK_SIZE) {
+      const chunk = data.slice(offset, offset + CHUNK_SIZE);
+      if (webActiveCharHandle.properties.writeWithoutResponse) {
+        await webActiveCharHandle.writeValueWithoutResponse(chunk);
+      } else {
+        await webActiveCharHandle.writeValue(chunk);
+      }
+      await new Promise(r => setTimeout(r, 20));
+    }
+
+    addPrinterLog('Web Bluetooth print payload sent successfully.');
+  }
+};
+
+/**
+ * ESC/POS Command Constants
  */
 const ESC = 0x1b;
 const GS = 0x1d;
@@ -294,15 +417,15 @@ const escpos = {
   alignRight: () => new Uint8Array([ESC, 0x61, 2]),
   boldOn: () => new Uint8Array([ESC, 0x45, 1]),
   boldOff: () => new Uint8Array([ESC, 0x45, 0]),
-  sizeHeader: () => new Uint8Array([GS, 0x21, 0x11]), // Double Width & Height
-  sizeGrandTotal: () => new Uint8Array([GS, 0x21, 0x11]), // Large Bold Total
+  sizeHeader: () => new Uint8Array([GS, 0x21, 0x11]),
+  sizeGrandTotal: () => new Uint8Array([GS, 0x21, 0x11]),
   sizeNormal: () => new Uint8Array([GS, 0x21, 0x00]),
   lineFeed: (count = 1) => {
     const buf = new Uint8Array(count);
     buf.fill(0x0a);
     return buf;
   },
-  cutPaper: () => new Uint8Array([GS, 0x56, 0x41, 0x03]), // Full / Partial paper cut
+  cutPaper: () => new Uint8Array([GS, 0x56, 0x41, 0x03]),
 };
 
 const encoder = new TextEncoder();
@@ -319,9 +442,6 @@ const concatChunks = (chunks: Uint8Array[]): Uint8Array => {
   return res;
 };
 
-/**
- * Left/Right 2-Column text formatting with exact padding
- */
 const formatRow2Col = (left: string, right: string, width: number): string => {
   const availableLeft = width - right.length - 1;
   if (left.length > availableLeft) {
@@ -333,9 +453,6 @@ const formatRow2Col = (left: string, right: string, width: number): string => {
   return left + ' '.repeat(Math.max(pad, 1)) + right;
 };
 
-/**
- * Format Product Line Item for 58mm / 80mm thermal receipt
- */
 const formatItemRow = (
   name: string,
   qty: number,
@@ -347,12 +464,9 @@ const formatItemRow = (
   const lines: string[] = [];
   const rightCol = `${qty}x${unitPrice} = ${currency}${total}`;
 
-  // If item name fits on line with right col
   if (name.length + rightCol.length + 1 <= width) {
     lines.push(formatRow2Col(name, rightCol, width));
   } else {
-    // Multi-line wrap: Product name on line 1, Qty & Price details on line 2
-    // Break long product name into chunks if necessary
     let remaining = name;
     while (remaining.length > width) {
       lines.push(remaining.slice(0, width));
@@ -361,7 +475,6 @@ const formatItemRow = (
     if (remaining.length > 0) {
       lines.push(remaining);
     }
-    // Second indented line for quantity and line sum
     lines.push(formatRow2Col(`  (${qty} pcs @ ${currency}${unitPrice})`, `${currency}${total}`, width));
   }
 
@@ -369,14 +482,15 @@ const formatItemRow = (
 };
 
 /**
- * Print Sale Receipt via Native Bluetooth ESC/POS
+ * Print Sale Receipt via Bluetooth ESC/POS
  */
 export const printReceiptViaBluetooth = async (
   sale: Sale,
   settings: ShopSettings,
   currency: string,
   customerName = 'Walk-In Customer',
-  overridePaperSize?: '58mm' | '80mm'
+  overridePaperSize?: '58mm' | '80mm',
+  targetAddress?: string
 ): Promise<void> => {
   const paperSize = overridePaperSize || (await getSavedPaperSize());
   const cols = paperSize === '80mm' ? 48 : 32;
@@ -385,10 +499,9 @@ export const printReceiptViaBluetooth = async (
 
   const chunks: Uint8Array[] = [];
 
-  // 1. Initialize Printer
   chunks.push(escpos.init());
 
-  // 2. Centered Business Header
+  // Header
   chunks.push(escpos.alignCenter());
   chunks.push(escpos.boldOn());
   chunks.push(escpos.sizeHeader());
@@ -408,20 +521,19 @@ export const printReceiptViaBluetooth = async (
   chunks.push(escpos.boldOff());
   chunks.push(strToBytes(`${lineSeparator}\n`));
 
-  // 3. Left-aligned Invoice Metadata
+  // Invoice Details
   chunks.push(escpos.alignLeft());
   chunks.push(strToBytes(formatRow2Col(`INVOICE: #${sale.invoiceNo}`, new Date(sale.date).toLocaleDateString(), cols) + '\n'));
   chunks.push(strToBytes(formatRow2Col(`TIME: ${new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, `CLIENT: ${customerName}`, cols) + '\n'));
   chunks.push(strToBytes(`STATION: POS Register #1\n`));
   chunks.push(strToBytes(`${thinSeparator}\n`));
 
-  // 4. Items Table Header
+  // Items
   chunks.push(escpos.boldOn());
   chunks.push(strToBytes(formatRow2Col('ITEM DESCRIPTION', 'QTY x PRICE   TOTAL', cols) + '\n'));
   chunks.push(escpos.boldOff());
   chunks.push(strToBytes(`${thinSeparator}\n`));
 
-  // 5. Line Items
   for (const item of sale.items) {
     const itemLines = formatItemRow(item.name, item.quantity, item.salePrice, item.total, currency, cols);
     for (const line of itemLines) {
@@ -431,7 +543,7 @@ export const printReceiptViaBluetooth = async (
 
   chunks.push(strToBytes(`${thinSeparator}\n`));
 
-  // 6. Subtotal, Tax, Discount
+  // Totals
   chunks.push(escpos.alignLeft());
   chunks.push(strToBytes(formatRow2Col('Subtotal:', `${currency}${sale.subtotal.toLocaleString()}`, cols) + '\n'));
   if (sale.tax > 0) {
@@ -443,7 +555,6 @@ export const printReceiptViaBluetooth = async (
 
   chunks.push(strToBytes(`${lineSeparator}\n`));
 
-  // 7. Large Bold Grand Total
   chunks.push(escpos.alignLeft());
   chunks.push(escpos.boldOn());
   chunks.push(escpos.sizeGrandTotal());
@@ -453,7 +564,7 @@ export const printReceiptViaBluetooth = async (
 
   chunks.push(strToBytes(`${lineSeparator}\n`));
 
-  // 8. Payment Breakdown
+  // Payment
   chunks.push(strToBytes(formatRow2Col(`Payment (${sale.paymentMethod}):`, `${currency}${sale.receivedAmount.toLocaleString()}`, cols) + '\n'));
   if (sale.changeAmount > 0) {
     chunks.push(escpos.boldOn());
@@ -463,7 +574,7 @@ export const printReceiptViaBluetooth = async (
 
   chunks.push(strToBytes(`${lineSeparator}\n`));
 
-  // 9. Centered Footer & Thank You
+  // Footer
   chunks.push(escpos.alignCenter());
   chunks.push(escpos.boldOn());
   chunks.push(strToBytes('*** THANK YOU FOR YOUR BUSINESS ***\n'));
@@ -474,12 +585,11 @@ export const printReceiptViaBluetooth = async (
   }
   chunks.push(strToBytes('Powered by Wholesale POS Station\n'));
 
-  // 10. Feed Paper & Cut
   chunks.push(escpos.lineFeed(4));
   chunks.push(escpos.cutPaper());
 
   const binaryPayload = concatChunks(chunks);
-  await transmitESCPOSToPrinter(binaryPayload);
+  await transmitESCPOSToPrinter(binaryPayload, targetAddress);
 };
 
 /**
@@ -487,7 +597,8 @@ export const printReceiptViaBluetooth = async (
  */
 export const printTestReceiptViaBluetooth = async (
   settings: ShopSettings,
-  overridePaperSize?: '58mm' | '80mm'
+  overridePaperSize?: '58mm' | '80mm',
+  targetAddress?: string
 ): Promise<void> => {
   const paperSize = overridePaperSize || (await getSavedPaperSize());
   const cols = paperSize === '80mm' ? 48 : 32;
@@ -506,8 +617,8 @@ export const printTestReceiptViaBluetooth = async (
     strToBytes(`${lineSeparator}\n`),
     escpos.alignLeft(),
     strToBytes(`Paper Format: ${paperSize} (${cols} Columns)\n`),
-    strToBytes('Protocol: Native ESC/POS Command Stream\n'),
-    strToBytes('Status: Operational & Ready\n'),
+    strToBytes('Protocol: Native Android ESC/POS Socket (SPP)\n'),
+    strToBytes('Status: Operational & Connected\n'),
     strToBytes(`${lineSeparator}\n`),
     escpos.alignCenter(),
     escpos.boldOn(),
@@ -518,5 +629,5 @@ export const printTestReceiptViaBluetooth = async (
   ];
 
   const binaryPayload = concatChunks(chunks);
-  await transmitESCPOSToPrinter(binaryPayload);
+  await transmitESCPOSToPrinter(binaryPayload, targetAddress);
 };
