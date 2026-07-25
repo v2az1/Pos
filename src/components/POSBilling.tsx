@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Barcode, Trash2, Tag, Percent, Info, ShoppingCart, 
   User, Check, DollarSign, ListFilter, Play, Bookmark, FileText, ChevronRight, Image,
-  AlertTriangle, X, Package, Printer, UserPlus, Sparkles
+  AlertTriangle, X, Package, Printer, UserPlus, Sparkles, Bluetooth
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { DBState, addLog } from '../db';
@@ -12,6 +12,7 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { translations } from '../lib/translations';
+import { printReceiptViaBluetooth, getSavedPaperSize } from '../lib/bluetoothPrinter';
 
 interface POSBillingProps {
   db: DBState;
@@ -685,6 +686,40 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
     window.print();
   };
 
+  const handleBluetoothPrint = async () => {
+    if (!lastInvoice) {
+      window.print();
+      return;
+    }
+
+    const custName = customers.find(c => c.id === lastInvoice.customerId)?.name || 'Walk-In Customer';
+    const paperSz = getSavedPaperSize();
+
+    try {
+      triggerToast(
+        currentLang === 'ur'
+          ? 'بلیوٹوتھ تھرمل پرنٹر کو کمانڈ بھیجی جا رہی ہے...'
+          : 'Transmitting ESC/POS receipt payload via Bluetooth...',
+        'info',
+        'Bluetooth Thermal Printer'
+      );
+      await printReceiptViaBluetooth(lastInvoice, settings, currency, custName, paperSz);
+      triggerToast(
+        currentLang === 'ur' ? 'رسید کامیابی سے پرنٹ ہو گئی!' : 'Thermal receipt printed successfully via Bluetooth!',
+        'success',
+        'Print Complete'
+      );
+    } catch (err: any) {
+      console.error('Bluetooth thermal print error, opening fallback dialog:', err);
+      triggerToast(
+        `Bluetooth printer: ${err.message || 'Device disconnected'}. Launching system print dialog.`,
+        'warning',
+        'Print Fallback'
+      );
+      window.print();
+    }
+  };
+
   const handleSaveInvoiceToFile = async () => {
     if (!lastInvoice) return;
     
@@ -1072,39 +1107,57 @@ ${settings.receiptFooter}
         </div>
 
         {/* Product Cards Grid section */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[500px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-4 max-h-[580px] overflow-y-auto pr-1.5 p-0.5">
           {filteredProducts.length > 0 ? (
             filteredProducts.map(p => (
               <button
                 key={p.id}
                 onClick={() => handleAddToCart(p)}
-                className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition duration-200 text-left flex flex-col justify-between group active:scale-[0.97] h-38"
+                className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-150 dark:border-slate-700/80 shadow-xs hover:shadow-md transition duration-200 text-left flex flex-col justify-between group active:scale-[0.97] overflow-hidden"
               >
                 <div>
-                  <div className="flex items-start justify-between gap-1">
-                    <div className="flex items-center gap-1.5 overflow-hidden">
-                      {p.image && (
-                        <img src={p.image} className="w-4 h-4 rounded-md object-cover shrink-0 border border-slate-200/50 dark:border-slate-600/50" alt="" referrerPolicy="no-referrer" />
-                      )}
-                      <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest truncate max-w-full">
-                        {db.categories.find(c => c.id === p.categoryId)?.name || 'Default'}
-                      </span>
-                    </div>
+                  {/* Large Product Image Banner */}
+                  <div className="w-full h-28 sm:h-32 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 overflow-hidden relative mb-2.5 flex items-center justify-center shrink-0">
+                    {p.image ? (
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-indigo-50/80 via-slate-100 to-indigo-100/40 dark:from-indigo-950/40 dark:via-slate-900 dark:to-slate-800 flex flex-col items-center justify-center text-indigo-500 dark:text-indigo-400 group-hover:scale-105 transition-transform duration-300">
+                        <Package className="w-8 h-8 opacity-40 mb-1" />
+                        <span className="text-xs font-black uppercase tracking-wider opacity-60">
+                          {p.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Category Overlay Tag */}
+                    <span className="absolute top-1.5 left-1.5 bg-slate-900/85 dark:bg-black/85 backdrop-blur-md text-white text-[8.5px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider truncate max-w-[80%] shadow-xs">
+                      {db.categories.find(c => c.id === p.categoryId)?.name || 'Misc'}
+                    </span>
+
+                    {/* Low Stock Warning Overlay */}
                     {p.quantity <= p.minStock && (
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title="Low stock alert"></span>
+                      <span className="absolute top-1.5 right-1.5 bg-rose-600 text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded-md shadow-xs animate-pulse">
+                        {p.quantity <= 0 ? 'OUT' : 'LOW'}
+                      </span>
                     )}
                   </div>
-                  <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 tracking-tight leading-snug line-clamp-2 mt-1 py-0.5">
+
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-850 dark:text-slate-100 tracking-tight leading-snug line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                     {p.name}
                   </h4>
-                  <div className="text-[10px] text-slate-400 font-mono tracking-wider">SKU: {p.sku}</div>
+                  <div className="text-[9.5px] text-slate-400 font-mono tracking-wider mt-0.5">SKU: {p.sku}</div>
                 </div>
 
-                <div className="flex items-center justify-between gap-1.5 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-705/30 w-full">
-                  <span className="text-sm font-extrabold text-slate-800 dark:text-white">
+                <div className="flex items-center justify-between gap-1.5 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700/60 w-full">
+                  <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                     {currency} {p.salePrice.toLocaleString()}
                   </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${p.quantity <= 0 ? 'bg-rose-50 text-rose-600 dark:bg-rose-955/30' : p.quantity <= p.minStock ? 'bg-amber-50 text-amber-600 dark:bg-amber-955/20' : 'bg-slate-50 dark:bg-slate-850 text-slate-500 dark:text-slate-400'}`}>
+                  <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-lg shrink-0 ${p.quantity <= 0 ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/30' : p.quantity <= p.minStock ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/20' : 'bg-slate-100 dark:bg-slate-750 text-slate-600 dark:text-slate-300'}`}>
                     Qty: {p.quantity} {p.unit}
                   </span>
                 </div>
@@ -1688,12 +1741,23 @@ ${settings.receiptFooter}
                 </p>
               </div>
 
-              <button
-                onClick={handleTriggerPrint}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 text-xs tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="w-4 h-4" /> {t.print_thermal}
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={handleBluetoothPrint}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 text-xs tracking-wider rounded-xl transition shadow flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <Bluetooth className="w-4 h-4 text-white" />
+                  <span>{currentLang === 'ur' ? 'بلیوٹوتھ تھرمل پرنٹ' : 'Print via Bluetooth (ESC/POS)'}</span>
+                </button>
+
+                <button
+                  onClick={handleTriggerPrint}
+                  className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold py-2.5 text-xs tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-slate-500" />
+                  <span>{currentLang === 'ur' ? 'سسٹم / A4 پرنٹ' : 'System Print / PDF Fallback'}</span>
+                </button>
+              </div>
               
               <button
                 onClick={() => setShowReceipt(false)}

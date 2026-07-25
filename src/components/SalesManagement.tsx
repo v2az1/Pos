@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { 
-  History, Search, Calendar, FileText, RefreshCcw, Printer, Info, CheckCircle2, XCircle
+  History, Search, Calendar, FileText, RefreshCcw, Printer, Info, CheckCircle2, XCircle, Bluetooth
 } from 'lucide-react';
 import { DBState, addLog } from '../db';
 import { Sale } from '../types';
 import { translations } from '../lib/translations';
+import { printReceiptViaBluetooth, getSavedPaperSize } from '../lib/bluetoothPrinter';
 
 interface SalesManagementProps {
   db: DBState;
@@ -118,6 +119,19 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
           status: 'Returned'
         });
       }
+    }
+  };
+
+  const handleBluetoothReprint = async () => {
+    if (!activeReprintSale) return;
+    const custName = customers.find(c => c.id === activeReprintSale.customerId)?.name || 'Walk-In Customer';
+    const paperSz = getSavedPaperSize();
+
+    try {
+      await printReceiptViaBluetooth(activeReprintSale, settings, currency, custName, paperSz);
+    } catch (err: any) {
+      console.error('Bluetooth reprint failed, falling back to system print:', err);
+      window.print();
     }
   };
 
@@ -341,10 +355,16 @@ export default function SalesManagement({ db, onSaveDB }: SalesManagementProps) 
             {/* Reprint CTA */}
             <div className="mt-6 flex flex-col gap-2 print:hidden">
               <button
-                onClick={() => window.print()}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 text-xs uppercase tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5"
+                onClick={handleBluetoothReprint}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 text-xs uppercase tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5 active:scale-98"
               >
-                <Printer className="w-4.5 h-4.5" /> Trigger Printer
+                <Bluetooth className="w-4 h-4 text-white" /> Print via Bluetooth (ESC/POS)
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <Printer className="w-4 h-4 text-slate-500" /> System / Standard Print
               </button>
               {activeReprintSale.status !== 'Returned' && (
                 <button
