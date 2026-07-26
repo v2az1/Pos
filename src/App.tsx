@@ -118,256 +118,48 @@ export default function App() {
   const lowStockCount = db.products.filter(p => p.quantity <= p.minStock).length;
 
   return (
-    <div dir={currentLang === 'ur' ? 'rtl' : 'ltr'} className={`min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition duration-150 font-sans antialiased`} id="app-workspace">
-      
-      {/* MOBILE HEADER BAR (Only visible on mobile screens) */}
-      <div className="md:hidden flex items-center justify-between px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] bg-slate-900 border-b border-slate-800 text-white print:hidden shrink-0">
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 -ml-1 rounded-xl hover:bg-slate-800 active:scale-95 transition-all"
-            aria-label="Open menu"
-          >
-            <Menu className="w-5.5 h-5.5 text-slate-200" />
-          </button>
-          <div className="flex items-center gap-2">
-            <img
-              src="/logo.jpg"
-              alt="Logo"
-              className="w-7 h-7 rounded-lg object-cover border border-slate-700/50"
-              referrerPolicy="no-referrer"
-            />
-            <span className="font-extrabold text-xs uppercase tracking-wider">
-              {db.settings.shopName || 'Wholesale POS'}
-            </span>
-          </div>
-        </div>
-
-        {/* Quick theme switcher on mobile top bar */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleToggleTheme}
-            className="p-2 rounded-xl hover:bg-slate-800 text-slate-300 transition-all"
-            title="Toggle Theme"
-          >
-            {isDark ? <Sun className="w-4.5 h-4.5 text-amber-400" /> : <Moon className="w-4.5 h-4.5 text-indigo-400" />}
-          </button>
-          {lowStockCount > 0 && (
-            <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-              {lowStockCount} LOW
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* MOBILE DRAWER OVERLAY & SLIDE-OUT PANEL */}
-      {isMobileMenuOpen && (
-        <>
-          {/* Backdrop mask */}
-          <div 
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 md:hidden transition-all duration-300 animate-fade-in"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
+    <div 
+      dir={currentLang === 'ur' ? 'rtl' : 'ltr'} 
+      className="w-[100dvw] h-[100dvh] min-h-[100dvh] flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition duration-150 font-sans antialiased overflow-hidden select-none" 
+      id="app-workspace"
+    >
+      {/* GLOBAL TOP HEADER BAR (Fixed at top, applies safe-area-inset-top padding for Android/Capacitor) */}
+      <header className="bg-slate-900 border-b border-slate-800 text-white shrink-0 print:hidden z-30 pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]" id="global-header-bar">
+        <div className="h-14 px-4 sm:px-6 flex items-center justify-between gap-3">
           
-          {/* Drawer container */}
-          <aside className="fixed inset-y-0 left-0 w-72 bg-slate-900 text-slate-300 flex flex-col justify-between z-[60] border-r border-slate-800 shadow-2xl md:hidden animate-slide-in-left">
-            <div>
-              {/* Drawer header */}
-              <div className="pb-5 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] px-5 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img
-                    src="/logo.jpg"
-                    alt="Logo"
-                    className="w-10 h-10 rounded-xl object-cover border border-slate-700/50"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div>
-                    <h2 className="font-extrabold text-sm tracking-wide text-white leading-tight uppercase truncate max-w-[130px]">
-                      {db.settings.shopName || 'Wholesale POS'}
-                    </h2>
-                    <span className="text-[9px] font-semibold text-emerald-400">
-                      Terminal: Live Workspace
-                    </span>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white transition active:scale-95"
-                >
-                  <X className="w-4.5 h-4.5" />
-                </button>
-              </div>
-
-              {/* Quick Metrics Warning in Drawer */}
-              {lowStockCount > 0 && (
-                <div className="mx-4 my-3 p-2.5 bg-amber-950/20 border border-amber-900/30 rounded-xl text-amber-500 text-[10px] font-bold flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-amber-500 animate-bounce" />
-                  <span>{t.low_stock_warn.replace('{count}', String(lowStockCount))}</span>
-                </div>
-              )}
-
-              {/* Drawer Navigation Links */}
-              <nav className="p-3 space-y-1 max-h-[calc(100vh-220px)] overflow-y-auto">
-                {[
-                  { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
-                  { id: 'pos', label: t.pos, icon: ShoppingCart },
-                  { id: 'products', label: t.products, icon: Package },
-                  { id: 'sales', label: t.sales, icon: History },
-                  { id: 'expenses', label: t.expenses, icon: DollarSign },
-                  { id: 'ledgers', label: t.ledgers, icon: BookOpen },
-                  { id: 'reports', label: t.reports, icon: BarChart3 },
-                  { id: 'backups', label: t.backups, icon: Database },
-                  { id: 'settings', label: t.settings, icon: SettingsIcon },
-                  { id: 'about', label: t.about, icon: Info },
-                ].map((menu) => {
-                  const Icon = menu.icon;
-                  const isActive = activeView === menu.id;
-
-                  return (
-                    <button
-                      key={menu.id}
-                      onClick={() => {
-                        setActiveView(menu.id);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`w-full py-3 px-4 rounded-xl text-xs font-bold transition flex items-center justify-between group ${
-                        isActive 
-                          ? 'bg-indigo-600 text-white shadow-md' 
-                          : 'hover:bg-slate-800 hover:text-white'
-                      } ${currentLang === 'ur' ? 'text-right' : 'text-left'}`}
-                    >
-                      <span className="flex items-center gap-3">
-                        <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
-                        {menu.label}
-                      </span>
-                      {menu.id === 'products' && lowStockCount > 0 && (
-                        <span className="bg-amber-500 text-slate-900 px-2 py-0.5 rounded-full text-[9px] font-black">{lowStockCount}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* Drawer Bottom panel */}
-            <div className="px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
-                <span>Terminal Server: <strong>Offline</strong></span>
-              </div>
-
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  handleLogout();
-                }}
-                className="w-full py-2.5 bg-slate-800 hover:bg-rose-950/20 hover:text-rose-400 text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-slate-700/60"
-              >
-                <LogOut className="w-4 h-4 text-rose-500" /> Close Station
-              </button>
-            </div>
-          </aside>
-        </>
-      )}
-
-      {/* DESKTOP SIDEBAR NAVIGATION PANEL */}
-      <aside className="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 text-slate-300 flex-col justify-between shrink-0 print:hidden" id="sidebar-panel">
-        <div>
-          {/* Brand header */}
-          <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-            <img
-              src="/logo.jpg"
-              alt="Logo"
-              className="w-10 h-10 rounded-xl object-cover border border-slate-700/50"
-              referrerPolicy="no-referrer"
-            />
-            <div>
-              <h2 className="font-extrabold text-sm tracking-wide text-white leading-tight uppercase truncate max-w-[120px]">
-                {db.settings.shopName || 'Wholesale POS'}
-              </h2>
-              <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-emerald-400">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                {t.active_station}
-              </span>
-            </div>
-          </div>
-
-          {/* Quick Metrics Badge Row */}
-          {lowStockCount > 0 && (
-            <div className="mx-4 my-3 p-2.5 bg-amber-950/20 border border-amber-900/30 rounded-xl text-amber-500 text-[10.5px] font-bold flex items-center gap-2">
-              <Bell className="w-4 h-4 text-amber-500 animate-bounce" />
-              <span>{t.low_stock_warn.replace('{count}', String(lowStockCount))}</span>
-            </div>
-          )}
-
-          {/* Nav groups */}
-          <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]" id="nav-group">
-            {[
-              { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
-              { id: 'pos', label: t.pos, icon: ShoppingCart },
-              { id: 'products', label: t.products, icon: Package },
-              { id: 'sales', label: t.sales, icon: History },
-              { id: 'expenses', label: t.expenses, icon: DollarSign },
-              { id: 'ledgers', label: t.ledgers, icon: BookOpen },
-              { id: 'reports', label: t.reports, icon: BarChart3 },
-              { id: 'backups', label: t.backups, icon: Database },
-              { id: 'settings', label: t.settings, icon: SettingsIcon },
-              { id: 'about', label: t.about, icon: Info },
-            ].map((menu) => {
-              const Icon = menu.icon;
-              const isActive = activeView === menu.id;
-
-              return (
-                <button
-                  key={menu.id}
-                  onClick={() => setActiveView(menu.id)}
-                  className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-between group ${isActive ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'} ${currentLang === 'ur' ? 'text-right' : 'text-left'}`}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-white' : 'text-slate-450 group-hover:text-indigo-400'}`} />
-                    {menu.label}
-                  </span>
-                  {menu.id === 'products' && lowStockCount > 0 && (
-                    <span className="bg-amber-500 text-slate-900 px-1.5 py-0.5 rounded-full text-[9px] font-black">{lowStockCount}</span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Sidebar bottom panel */}
-        <div className="p-4 border-t border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
-            <span>Terminal Server: <strong>Offline</strong></span>
+          {/* Left section: Mobile menu toggle + Shop Brand + Status Badge */}
+          <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={handleToggleTheme}
-              className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-350 transition"
-              title="Toggle Display Theme"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 -ml-1 rounded-xl hover:bg-slate-800 active:scale-95 transition-all text-slate-200 cursor-pointer"
+              aria-label="Toggle navigation menu"
+              title="Open Navigation Menu"
             >
-              {isDark ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />}
+              <Menu className="w-5.5 h-5.5" />
             </button>
-          </div>
 
-          <button
-            onClick={handleLogout}
-            className="w-full py-2.5 bg-slate-800 hover:bg-rose-950/20 hover:text-rose-400 text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-slate-700/60"
-          >
-            <LogOut className="w-4 h-4 text-rose-500" /> {t.close_station}
-          </button>
-        </div>
-      </aside>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <img
+                src="/logo.jpg"
+                alt="Logo"
+                className="w-8 h-8 rounded-lg object-cover border border-slate-700/60 shrink-0"
+                referrerPolicy="no-referrer"
+              />
+              <div className="min-w-0">
+                <h1 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-white truncate max-w-[140px] sm:max-w-[200px]">
+                  {db.settings.shopName || 'Wholesale POS'}
+                </h1>
+                <span className="text-[9.5px] font-semibold text-emerald-400 hidden sm:inline-block">
+                  Terminal Station
+                </span>
+              </div>
+            </div>
 
-      {/* MAIN WORKSPACE AREA */}
-      <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* UPPER CONSOLIDATED HEADER BAR */}
-        <header className="h-14 bg-white dark:bg-slate-850 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 shrink-0 print:hidden" id="header-bar">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate">
-              <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" /> 
-              <span className="hidden sm:inline">{t.status}:</span>
-              <strong className="text-indigo-600 dark:text-indigo-400 truncate">
+            {/* Active view status indicator */}
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-slate-800/90 border border-slate-700/60 rounded-xl text-xs font-bold text-slate-300 ml-2">
+              <Shield className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span>{t.status}:</span>
+              <strong className="text-indigo-400 truncate max-w-[120px]">
                 {activeView === 'dashboard' ? t.dashboard :
                  activeView === 'pos' ? t.pos :
                  activeView === 'products' ? t.products :
@@ -379,35 +171,116 @@ export default function App() {
                  activeView === 'about' ? t.about :
                  t.settings}
               </strong>
-            </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 text-xs font-bold select-none text-slate-600 dark:text-slate-400">
-            {/* Quick Language Toggle */}
+          {/* Right section: Low Stock Alert, Language, Theme, Clock */}
+          <div className="flex items-center gap-2 sm:gap-3 text-xs font-bold select-none text-slate-300">
+            {lowStockCount > 0 && (
+              <button
+                onClick={() => setActiveView('products')}
+                className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10.5px] font-extrabold px-2.5 py-1 rounded-xl animate-pulse transition cursor-pointer flex items-center gap-1.5"
+                title="View Low Stock Items"
+              >
+                <Bell className="w-3.5 h-3.5 text-amber-400" />
+                <span>{lowStockCount} {t.low_stock}</span>
+              </button>
+            )}
+
+            {/* Language Switcher */}
             <button
               onClick={handleToggleLanguage}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-extrabold transition cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/70 rounded-xl text-indigo-300 font-extrabold transition cursor-pointer active:scale-95"
               title="Toggle Language / زبان تبدیل کریں"
             >
-              <Globe className="w-3.5 h-3.5 text-indigo-500" />
-              <span>{currentLang === 'en' ? 'اردو' : 'English'}</span>
+              <Globe className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-[11px]">{currentLang === 'en' ? 'اردو' : 'English'}</span>
+            </button>
+
+            {/* Theme Switcher */}
+            <button
+              onClick={handleToggleTheme}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/70 text-slate-300 transition-all cursor-pointer active:scale-95"
+              title="Toggle Theme"
+            >
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
             </button>
 
             {/* Clock */}
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 sm:px-3 py-1.5 rounded-xl font-mono text-indigo-600 dark:text-indigo-450">
+            <div className="hidden sm:flex bg-slate-800 border border-slate-700/70 px-2.5 py-1.5 rounded-xl font-mono text-indigo-300 text-xs">
               {currentTime || t.loading}
             </div>
-            
-            {/* Shop Contacts summary */}
-            <div className="hidden lg:flex items-center gap-2 text-slate-400">
-              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {db.settings.address.slice(0, 20)}...</span>
-              <span className="flex items-center gap-1"><PhoneCall className="w-3.5 h-3.5" /> {db.settings.phone}</span>
-            </div>
           </div>
-        </header>
 
-        {/* ACTIVE MODULE CONTAINER VIEW */}
-        <main className="p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/40">
+        </div>
+      </header>
+
+      {/* BODY WORKSPACE CONTAINER (Positioned directly below the Header Bar) */}
+      <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
+        
+        {/* DESKTOP & LANDSCAPE TABLET SIDEBAR */}
+        <aside 
+          className="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 text-slate-300 flex-col justify-between shrink-0 overflow-y-auto pl-[env(safe-area-inset-left,0px)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] print:hidden" 
+          id="sidebar-panel"
+        >
+          <div className="p-3 space-y-1">
+            {/* Nav Menu Items */}
+            <nav className="space-y-1">
+              {[
+                { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
+                { id: 'pos', label: t.pos, icon: ShoppingCart },
+                { id: 'products', label: t.products, icon: Package },
+                { id: 'sales', label: t.sales, icon: History },
+                { id: 'expenses', label: t.expenses, icon: DollarSign },
+                { id: 'ledgers', label: t.ledgers, icon: BookOpen },
+                { id: 'reports', label: t.reports, icon: BarChart3 },
+                { id: 'backups', label: t.backups, icon: Database },
+                { id: 'settings', label: t.settings, icon: SettingsIcon },
+                { id: 'about', label: t.about, icon: Info },
+              ].map((menu) => {
+                const Icon = menu.icon;
+                const isActive = activeView === menu.id;
+
+                return (
+                  <button
+                    key={menu.id}
+                    onClick={() => setActiveView(menu.id)}
+                    className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-between group cursor-pointer ${
+                      isActive 
+                        ? 'bg-indigo-600 text-white shadow-md' 
+                        : 'hover:bg-slate-800 hover:text-white text-slate-300'
+                    } ${currentLang === 'ur' ? 'text-right' : 'text-left'}`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                      {menu.label}
+                    </span>
+                    {menu.id === 'products' && lowStockCount > 0 && (
+                      <span className="bg-amber-500 text-slate-900 px-1.5 py-0.5 rounded-full text-[9px] font-black">{lowStockCount}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Sidebar bottom panel */}
+          <div className="p-4 border-t border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+              <span>Terminal Server: <strong>Offline</strong></span>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="w-full py-2.5 bg-slate-800 hover:bg-rose-950/20 hover:text-rose-400 text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-slate-700/60 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 text-rose-500" /> {t.close_station}
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN WORKSPACE CONTENT AREA */}
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto bg-slate-50 dark:bg-slate-900/40 pr-[calc(1rem+env(safe-area-inset-right,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
           <div className="max-w-7xl mx-auto">
             {activeView === 'dashboard' && (
               <Dashboard 
@@ -473,6 +346,116 @@ export default function App() {
         </main>
 
       </div>
+
+      {/* MOBILE DRAWER OVERLAY & SLIDE-OUT PANEL */}
+      {isMobileMenuOpen && (
+        <>
+          {/* Backdrop mask */}
+          <div 
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 md:hidden transition-all duration-300 animate-fade-in"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          {/* Drawer container with safe area insets */}
+          <aside className="fixed inset-y-0 left-0 w-72 bg-slate-900 text-slate-300 flex flex-col justify-between z-[60] border-r border-slate-800 shadow-2xl md:hidden animate-slide-in-left pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)]">
+            <div>
+              {/* Drawer header */}
+              <div className="pb-4 pt-4 px-5 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/logo.jpg"
+                    alt="Logo"
+                    className="w-9 h-9 rounded-xl object-cover border border-slate-700/50"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div>
+                    <h2 className="font-extrabold text-sm tracking-wide text-white leading-tight uppercase truncate max-w-[130px]">
+                      {db.settings.shopName || 'Wholesale POS'}
+                    </h2>
+                    <span className="text-[9px] font-semibold text-emerald-400">
+                      Terminal Workspace
+                    </span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white transition active:scale-95 cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+
+              {/* Quick Metrics Warning in Drawer */}
+              {lowStockCount > 0 && (
+                <div className="mx-4 my-3 p-2.5 bg-amber-950/20 border border-amber-900/30 rounded-xl text-amber-500 text-[10px] font-bold flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-amber-500 animate-bounce" />
+                  <span>{t.low_stock_warn.replace('{count}', String(lowStockCount))}</span>
+                </div>
+              )}
+
+              {/* Drawer Navigation Links */}
+              <nav className="p-3 space-y-1 max-h-[calc(100vh-220px)] overflow-y-auto">
+                {[
+                  { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
+                  { id: 'pos', label: t.pos, icon: ShoppingCart },
+                  { id: 'products', label: t.products, icon: Package },
+                  { id: 'sales', label: t.sales, icon: History },
+                  { id: 'expenses', label: t.expenses, icon: DollarSign },
+                  { id: 'ledgers', label: t.ledgers, icon: BookOpen },
+                  { id: 'reports', label: t.reports, icon: BarChart3 },
+                  { id: 'backups', label: t.backups, icon: Database },
+                  { id: 'settings', label: t.settings, icon: SettingsIcon },
+                  { id: 'about', label: t.about, icon: Info },
+                ].map((menu) => {
+                  const Icon = menu.icon;
+                  const isActive = activeView === menu.id;
+
+                  return (
+                    <button
+                      key={menu.id}
+                      onClick={() => {
+                        setActiveView(menu.id);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`w-full py-3 px-4 rounded-xl text-xs font-bold transition flex items-center justify-between group cursor-pointer ${
+                        isActive 
+                          ? 'bg-indigo-600 text-white shadow-md' 
+                          : 'hover:bg-slate-800 hover:text-white'
+                      } ${currentLang === 'ur' ? 'text-right' : 'text-left'}`}
+                    >
+                      <span className="flex items-center gap-3">
+                        <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                        {menu.label}
+                      </span>
+                      {menu.id === 'products' && lowStockCount > 0 && (
+                        <span className="bg-amber-500 text-slate-900 px-2 py-0.5 rounded-full text-[9px] font-black">{lowStockCount}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Drawer Bottom panel */}
+            <div className="px-4 pt-4 pb-4 border-t border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+                <span>Terminal Server: <strong>Offline</strong></span>
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="w-full py-2.5 bg-slate-800 hover:bg-rose-950/20 hover:text-rose-400 text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-slate-700/60 cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-rose-500" /> Close Station
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
 
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in" id="logout-confirm-modal">

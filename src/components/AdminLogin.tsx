@@ -42,7 +42,7 @@ export default function AdminLogin({ user, onLoginSuccess }: AdminLoginProps) {
   };
 
   return (
-    <div id="login-container" className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div id="login-container" className="w-[100dvw] min-h-[100dvh] bg-slate-900 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 pt-[calc(3rem+env(safe-area-inset-top,0px))] pb-[calc(3rem+env(safe-area-inset-bottom,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] pr-[calc(1rem+env(safe-area-inset-right,0px))] overflow-y-auto">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <div className="inline-flex items-center justify-center p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-900/30 text-white mb-4">
           <ShoppingBag className="w-10 h-10" />

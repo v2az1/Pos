@@ -153,12 +153,34 @@
 }
 
 /* Prevent text selection and long-press copy across the entire application */
-body {
+html, body, #root {
+  width: 100%;
+  width: 100dvw;
+  height: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* Safe area padding utilities for Android 11-16 & iOS notches/status bars */
+.pt-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pl-safe-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe-right {
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Keep input fields and textareas editable and selectable */

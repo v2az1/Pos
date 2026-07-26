@@ -39,9 +39,15 @@ export const initCapacitorNative = async (isDarkTheme: boolean, onBackNavigation
   console.log('Initializing Capacitor Native Android Kiosk Mode...');
 
   try {
-    // 1. Configure Android StatusBar
+    // 1. Configure Android StatusBar safely
     await StatusBar.setStyle({ style: isDarkTheme ? Style.Dark : Style.Light });
     await StatusBar.setBackgroundColor({ color: isDarkTheme ? '#0f172a' : '#1e1b4b' });
+
+    try {
+      await StatusBar.setOverlaysWebView({ overlay: true });
+    } catch (overlayErr) {
+      console.debug('StatusBar overlay setting non-fatal:', overlayErr);
+    }
 
     // 2. Configure Android Soft Keyboard
     Keyboard.addListener('keyboardWillShow', info => {
