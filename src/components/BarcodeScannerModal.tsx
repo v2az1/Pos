@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Barcode, Camera, Bluetooth, X, Check, AlertCircle, RefreshCw, 
-  Volume2, VolumeX, Flashlight, ShieldCheck, Zap
+  Barcode, Bluetooth, X, Check, AlertCircle, 
+  Volume2, VolumeX, ShieldCheck, Zap
 } from 'lucide-react';
-import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { Product } from '../types';
 import { triggerHaptic } from '../lib/capacitor';
 
@@ -22,23 +21,23 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   products = [],
   title = 'Barcode & Bluetooth Scanner'
 }) => {
-  const [activeTab, setActiveTab] = useState<'bluetooth' | 'camera'>('bluetooth');
   const [manualCode, setManualCode] = useState('');
   const [lastScannedCode, setLastScannedCode] = useState<string>('');
   const [lastScanTime, setLastScanTime] = useState<string>('');
   const [matchedItem, setMatchedItem] = useState<Product | null>(null);
   const [scanHistory, setScanHistory] = useState<Array<{ code: string; time: string; product?: string }>>([]);
-
-  // Camera scanner states
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isCameraScanning, setIsCameraScanning] = useState(false);
-  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const controlsRef = useRef<IScannerControls | null>(null);
   const manualInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Focus input automatically when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        manualInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
 
   // Play audio beep on scan
   const playBeep = () => {
@@ -83,9 +82,15 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     ]);
 
     onScanSuccess(code, foundProduct);
+
+    // Keep input focused and cleared for hands-free continuous scanning
+    setManualCode('');
+    setTimeout(() => {
+      manualInputRef.current?.focus();
+    }, 50);
   };
 
-  // Listen for Bluetooth HID barcode scanner key sequence globally when modal is open
+  // Listen for Bluetooth / Wireless / USB HID barcode scanner key sequences
   useEffect(() => {
     if (!isOpen) return;
 
@@ -106,7 +111,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       const timeDiff = now - lastKeyTime;
       lastKeyTime = now;
 
-      // Bluetooth scanners transmit rapid keystrokes (< 80ms apart)
+      // Hardware scanners transmit rapid keystrokes (< 80ms apart)
       const isFastScanner = timeDiff < 80;
 
       // Check if target is an input
@@ -125,7 +130,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       }
 
       if (e.key.length === 1) {
-        // If not typing in input or fast scanner output, capture into buffer
+        // Capture scanner output into buffer
         if (!isInput || isFastScanner) {
           if (buffer.length > 60) buffer = '';
           buffer += e.key;
@@ -140,74 +145,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     };
   }, [isOpen, products, soundEnabled]);
 
-  // Handle Camera scanning initialization
-  useEffect(() => {
-    if (!isOpen || activeTab !== 'camera') {
-      stopCameraScanner();
-      return;
-    }
-
-    startCameraScanner();
-
-    return () => {
-      stopCameraScanner();
-    };
-  }, [isOpen, activeTab, selectedCameraId]);
-
-  const startCameraScanner = async () => {
-    setCameraError(null);
-    setIsCameraScanning(true);
-
-    try {
-      const codeReader = new BrowserMultiFormatReader();
-
-      // List available camera video input devices
-      const videoDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-      setAvailableCameras(videoDevices);
-
-      let deviceId = selectedCameraId;
-      if (!deviceId && videoDevices.length > 0) {
-        // Prefer environment/back camera if available
-        const backCam = videoDevices.find(d => 
-          d.label.toLowerCase().includes('back') || 
-          d.label.toLowerCase().includes('rear') ||
-          d.label.toLowerCase().includes('environment')
-        );
-        deviceId = backCam ? backCam.deviceId : videoDevices[0].deviceId;
-        setSelectedCameraId(deviceId);
-      }
-
-      if (videoRef.current) {
-        controlsRef.current = await codeReader.decodeFromVideoDevice(
-          deviceId || undefined,
-          videoRef.current,
-          (result, err) => {
-            if (result) {
-              const text = result.getText();
-              processScannedCode(text);
-            }
-          }
-        );
-      }
-    } catch (err: any) {
-      console.error('Camera scanner init error:', err);
-      setCameraError(err?.message || 'Unable to access camera device. Ensure camera permissions are granted.');
-      setIsCameraScanning(false);
-    }
-  };
-
-  const stopCameraScanner = () => {
-    if (controlsRef.current) {
-      try {
-        controlsRef.current.stop();
-      } catch (err) {
-        // Ignore stop error
-      }
-      controlsRef.current = null;
-    }
-    setIsCameraScanning(false);
-  };
-
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (manualCode.trim()) {
@@ -220,7 +157,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">
+      <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">
         
         {/* Modal Header */}
         <div className="px-5 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
@@ -233,7 +170,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 {title}
               </h3>
               <p className="text-[11px] text-slate-400 font-semibold">
-                Bluetooth HID hardware scanner & rear camera support
+                Hands-Free Bluetooth, 2.4G Wireless & USB Scanner Active
               </p>
             </div>
           </div>
@@ -255,131 +192,48 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/50 p-1.5 gap-2 shrink-0">
-          <button
-            onClick={() => setActiveTab('bluetooth')}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'bluetooth'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <Bluetooth className="w-4 h-4 text-sky-300" />
-            <span>Bluetooth / USB Scanner</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('camera')}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'camera'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <Camera className="w-4 h-4 text-amber-300" />
-            <span>Device Camera</span>
-          </button>
-        </div>
-
         {/* Modal Body */}
         <div className="p-5 overflow-y-auto space-y-4 flex-1">
           
-          {/* TAB 1: BLUETOOTH HID HARDWARE SCANNER */}
-          {activeTab === 'bluetooth' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-sky-950/30 border border-sky-800/50 rounded-2xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sky-400 font-extrabold text-xs uppercase tracking-wider">
-                    <ShieldCheck className="w-4 h-4 text-sky-400" />
-                    <span>Bluetooth Scanner Mode: ACTIVE</span>
-                  </div>
-                  <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-black rounded-full flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-emerald-400" /> HID Ready
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Pair your Bluetooth handheld barcode scanner (or 2.4G wireless/USB scanner) with your Android device or PC. Point and press the trigger to scan any barcode!
-                </p>
+          <div className="p-4 bg-sky-950/30 border border-sky-800/50 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sky-400 font-extrabold text-xs uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4 text-sky-400" />
+                <span>Hands-Free Scanner Ready</span>
               </div>
-
-              {/* Manual Input Test */}
-              <form onSubmit={handleManualSubmit} className="space-y-2">
-                <label className="text-xs font-bold text-slate-300 block">
-                  Scanned Barcode / SKU Input (Auto-populates on Bluetooth scan)
-                </label>
-                <div className="relative">
-                  <input
-                    ref={manualInputRef}
-                    type="text"
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Scan barcode with Bluetooth scanner or type here..."
-                    className="w-full pl-10 pr-24 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-indigo-500"
-                    autoFocus
-                  />
-                  <Barcode className="w-5 h-5 text-slate-500 absolute left-3 top-3.5" />
-                  <button
-                    type="submit"
-                    className="absolute right-2 top-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition"
-                  >
-                    Submit
-                  </button>
-                </div>
-              </form>
+              <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-black rounded-full flex items-center gap-1">
+                <Zap className="w-3 h-3 text-emerald-400" /> Listening...
+              </span>
             </div>
-          )}
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Simply point your Bluetooth or USB handheld scanner at any barcode and press the trigger. Scanned items will be automatically detected and added in real-time.
+            </p>
+          </div>
 
-          {/* TAB 2: CAMERA SCANNER */}
-          {activeTab === 'camera' && (
-            <div className="space-y-3">
-              {cameraError ? (
-                <div className="p-4 bg-rose-950/40 border border-rose-800/60 rounded-2xl text-rose-300 text-xs space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-rose-200">
-                    <AlertCircle className="w-4.5 h-4.5 text-rose-400 shrink-0" />
-                    <span>Camera Initialization Error</span>
-                  </div>
-                  <p>{cameraError}</p>
-                  <button
-                    onClick={startCameraScanner}
-                    className="mt-2 px-3 py-1.5 bg-rose-800 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> Retry Camera
-                  </button>
-                </div>
-              ) : (
-                <div className="relative rounded-2xl overflow-hidden bg-black border border-slate-800 aspect-video flex items-center justify-center">
-                  <video
-                    ref={videoRef}
-                    className="w-full h-full object-cover"
-                  />
-
-                  {/* Scanning reticle visual overlay */}
-                  <div className="absolute inset-0 border-2 border-dashed border-indigo-500/40 m-8 rounded-2xl pointer-events-none flex items-center justify-center">
-                    <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse shadow-lg shadow-red-500/50"></div>
-                  </div>
-
-                  <div className="absolute bottom-3 left-3 right-3 bg-slate-950/80 backdrop-blur-md px-3 py-2 rounded-xl text-[11px] text-slate-300 font-medium text-center flex items-center justify-between">
-                    <span>Align barcode within red laser line</span>
-                    {availableCameras.length > 1 && (
-                      <select
-                        value={selectedCameraId}
-                        onChange={(e) => setSelectedCameraId(e.target.value)}
-                        className="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2 py-1 text-white"
-                      >
-                        {availableCameras.map(cam => (
-                          <option key={cam.deviceId} value={cam.deviceId}>
-                            {cam.label || `Camera ${cam.deviceId.slice(0, 5)}`}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                </div>
-              )}
+          {/* Scanner Input Field */}
+          <form onSubmit={handleManualSubmit} className="space-y-2">
+            <label className="text-xs font-bold text-slate-300 block">
+              Direct Barcode / SKU Input
+            </label>
+            <div className="relative">
+              <input
+                ref={manualInputRef}
+                type="text"
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value)}
+                placeholder="Scan barcode with scanner or type code..."
+                className="w-full pl-10 pr-24 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-indigo-500"
+                autoFocus
+              />
+              <Barcode className="w-5 h-5 text-indigo-400 absolute left-3 top-3.5" />
+              <button
+                type="submit"
+                className="absolute right-2 top-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition"
+              >
+                Add Code
+              </button>
             </div>
-          )}
+          </form>
 
           {/* LAST SCANNED RESULT FEEDBACK BOX */}
           {lastScannedCode && (
@@ -429,7 +283,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           {scanHistory.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-slate-800">
               <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
-                Recent Scan Logs ({scanHistory.length})
+                Recent Hands-Free Scan Logs ({scanHistory.length})
               </h4>
               <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
                 {scanHistory.map((item, idx) => (
@@ -450,7 +304,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         {/* Modal Footer */}
         <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
           <span className="text-xs text-slate-400 font-medium">
-            Tested & Compatible with Zebra, Honeywell, Eyoyo, Inateck, SocketMobile & Android Camera
+            Supported: Zebra, Honeywell, Eyoyo, Inateck, Netum & SocketMobile
           </span>
           <button
             onClick={onClose}
