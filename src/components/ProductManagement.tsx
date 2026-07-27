@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { 
   Plus, Edit, Trash2, Copy, ArrowUpDown, FileDown, FileUp, 
-  Search, Barcode, HelpCircle, ArrowUpRight, ArrowDownRight, Tag, Info, AlertTriangle
+  Search, Barcode, HelpCircle, ArrowUpRight, ArrowDownRight, Tag, Info, AlertTriangle, Printer, Loader2, Bluetooth
 } from 'lucide-react';
 import { DBState, addLog } from '../db';
 import { Product, Category } from '../types';
 import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { translations } from '../lib/translations';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { printBarcodeViaBluetooth, getSavedPrinter } from '../lib/bluetoothPrinter';
+import { BluetoothPrinterModal } from './BluetoothPrinterModal';
 
 interface ProductManagementProps {
   db: DBState;
@@ -58,6 +61,70 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [printingProduct, setPrintingProduct] = useState<Product | null>(null);
   const [barcodeLabelsCount, setBarcodeLabelsCount] = useState(12);
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [isPrintingBarcode, setIsPrintingBarcode] = useState(false);
+  const [barcodeToast, setBarcodeToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const [showBTPrinterModal, setShowBTPrinterModal] = useState(false);
+
+  const handlePrintBarcodeBluetooth = async (product: Product | null, count: number) => {
+    console.log('[ProductManagement] handlePrintBarcodeBluetooth started for product:', product?.name, 'Count:', count);
+    setIsPrintingBarcode(true);
+    setBarcodeToast(null);
+
+    try {
+      if (!product) {
+        throw new Error('No product selected for barcode printing.');
+      }
+
+      const cleanBarcode = (product.barcode || '').trim();
+      if (!cleanBarcode) {
+        throw new Error(`Product "${product.name}" does not have a barcode or SKU code assigned.`);
+      }
+
+      console.log('[ProductManagement] Verified barcode:', cleanBarcode);
+
+      const savedPrinter = await getSavedPrinter();
+      console.log('[ProductManagement] Retrieved saved printer:', savedPrinter);
+
+      if (!savedPrinter) {
+        console.warn('[ProductManagement] No Bluetooth printer configured. Prompting setup...');
+        setBarcodeToast({
+          message: 'No Bluetooth printer configured. Please select or pair your thermal printer.',
+          type: 'warning'
+        });
+        setShowBTPrinterModal(true);
+        return;
+      }
+
+      console.log('[ProductManagement] Invoking printBarcodeViaBluetooth...');
+      await printBarcodeViaBluetooth({
+        productName: product.name,
+        barcode: cleanBarcode,
+        price: product.salePrice,
+        currency,
+        shopName: settings.shopName,
+        count: count,
+        targetAddress: savedPrinter.address || savedPrinter.id
+      });
+
+      console.log('[ProductManagement] Barcode printing completed successfully!');
+      setBarcodeToast({
+        message: `Successfully printed ${count} barcode tag(s) for "${product.name}" on ${savedPrinter.name}!`,
+        type: 'success'
+      });
+      setTimeout(() => setBarcodeToast(null), 5000);
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Failed printing barcode tag on Bluetooth printer.';
+      console.error('[ProductManagement] Barcode print error:', err);
+      setBarcodeToast({
+        message: `Barcode Print Error: ${errorMsg}`,
+        type: 'error'
+      });
+      setTimeout(() => setBarcodeToast(null), 7000);
+    } finally {
+      setIsPrintingBarcode(false);
+    }
+  };
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -348,15 +415,26 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
 
       {/* Catalog search options line */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-4.5 h-4.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder={t.search_products}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600"
-          />
+        <div className="relative flex-1 flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 w-4.5 h-4.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder={t.search_products}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowScannerModal(true)}
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-xs shrink-0 cursor-pointer"
+            title="Scan barcode with Bluetooth scanner or camera"
+          >
+            <Barcode className="w-4 h-4" />
+            <span className="hidden sm:inline">Scan SKU</span>
+          </button>
         </div>
 
         <div className="flex gap-2">
@@ -453,12 +531,29 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
 
                     {/* Barcode labels generator widget */}
                     <td className="px-5 py-3 text-center">
-                      <button
-                        onClick={() => { setPrintingProduct(p); setShowBarcodeModal(true); }}
-                        className="inline-flex items-center gap-1 text-[10.5px] font-bold text-slate-550 border rounded-lg px-2.5 py-1 hover:bg-slate-50 dark:hover:bg-slate-750 transition"
-                      >
-                        <Barcode className="w-3.5 h-3.5 text-indigo-500" /> Label
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => { setPrintingProduct(p); setShowBarcodeModal(true); }}
+                          className="inline-flex items-center gap-1 text-[10.5px] font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-750 transition cursor-pointer"
+                          title="Open Barcode Tag Generator & Print Preview"
+                        >
+                          <Barcode className="w-3.5 h-3.5 text-indigo-500" /> Label
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPrintingProduct(p);
+                            handlePrintBarcodeBluetooth(p, 1);
+                          }}
+                          disabled={isPrintingBarcode}
+                          className="inline-flex items-center gap-1 text-[10.5px] font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg px-2 py-1 transition cursor-pointer shadow-xs disabled:opacity-50"
+                          title="Quick Print 1 Barcode Tag to Bluetooth Thermal Printer"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
 
                     {/* Management actions */}
@@ -939,8 +1034,22 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
               </div>
             </div>
 
+            {/* Feedback alert banner */}
+            {barcodeToast && (
+              <div className={`p-3 my-2 rounded-xl border text-xs font-bold flex items-center justify-between animate-fade-in print:hidden ${
+                barcodeToast.type === 'success' 
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' 
+                  : barcodeToast.type === 'warning'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300'
+                  : 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300'
+              }`}>
+                <span>{barcodeToast.message}</span>
+                <button type="button" onClick={() => setBarcodeToast(null)} className="text-xs font-bold ml-2 cursor-pointer">✕</button>
+              </div>
+            )}
+
             {/* BARCODE TAG GRID FOR PRINTING */}
-            <div className="my-6 border border-dashed rounded-xl p-4 bg-slate-50/50 flex flex-wrap justify-center gap-4 max-h-[380px] overflow-y-auto" id="barcode-print-grid">
+            <div className="my-4 border border-dashed rounded-xl p-4 bg-slate-50/50 flex flex-wrap justify-center gap-4 max-h-[350px] overflow-y-auto" id="barcode-print-grid">
               {Array.from({ length: barcodeLabelsCount }).map((_, idx) => (
                 <div key={idx} className="bg-white border rounded p-2.5 w-[140px] text-center flex flex-col items-center justify-between shadow-xs select-none hover:scale-105 transition">
                   <div className="text-[8.5px] font-bold text-slate-500 truncate w-full uppercase">{settings.shopName}</div>
@@ -963,24 +1072,70 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
               ))}
             </div>
 
-            <div className="flex gap-2 text-xs pt-4 border-t print:hidden">
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 text-xs pt-4 border-t print:hidden">
               <button
-                onClick={() => setShowBarcodeModal(false)}
-                className="flex-1 py-3 border rounded-xl text-slate-650 font-bold hover:bg-slate-50 transition"
+                type="button"
+                onClick={() => setShowBTPrinterModal(true)}
+                className="py-2.5 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Configure Bluetooth Printer"
               >
-                Close Printer
+                <Bluetooth className="w-4 h-4 text-sky-500" />
+                <span className="hidden sm:inline">Printer Config</span>
               </button>
+
               <button
-                onClick={() => window.print()}
-                className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg flex items-center justify-center gap-1.5"
+                type="button"
+                onClick={() => handlePrintBarcodeBluetooth(printingProduct, barcodeLabelsCount)}
+                disabled={isPrintingBarcode}
+                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                Print Barcode Tags Grid
+                {isPrintingBarcode ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Printing ESC/POS Barcode...</span>
+                  </>
+                ) : (
+                  <>
+                    <Printer className="w-4 h-4" />
+                    <span>Print via Bluetooth ({barcodeLabelsCount})</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="py-2.5 px-3 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-semibold rounded-xl hover:bg-slate-50 transition shrink-0 cursor-pointer"
+                title="Print PDF / Browser Sheet"
+              >
+                Browser Sheet
               </button>
             </div>
 
           </div>
         </div>
       )}
+
+      {/* Bluetooth Thermal Printer Configuration Modal */}
+      <BluetoothPrinterModal
+        isOpen={showBTPrinterModal}
+        onClose={() => setShowBTPrinterModal(false)}
+        settings={settings}
+        triggerToast={(msg, type) => setBarcodeToast({ message: msg, type: type === 'info' ? 'success' : type || 'success' })}
+      />
+
+      {/* Barcode & Bluetooth Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        products={products}
+        onScanSuccess={(code, product) => {
+          setSearch(code);
+          if (showAddEditModal) {
+            setFormData(prev => ({ ...prev, barcode: code }));
+          }
+        }}
+      />
 
     </div>
   );

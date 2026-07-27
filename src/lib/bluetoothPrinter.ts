@@ -631,3 +631,111 @@ export const printTestReceiptViaBluetooth = async (
   const binaryPayload = concatChunks(chunks);
   await transmitESCPOSToPrinter(binaryPayload, targetAddress);
 };
+
+export interface PrintBarcodeOptions {
+  productName: string;
+  barcode: string;
+  price: number;
+  currency: string;
+  shopName?: string;
+  count?: number;
+  overridePaperSize?: '58mm' | '80mm';
+  targetAddress?: string;
+}
+
+/**
+ * Print Barcode Tags directly to Bluetooth ESC/POS Thermal Printer
+ */
+export const printBarcodeViaBluetooth = async (
+  options: PrintBarcodeOptions
+): Promise<void> => {
+  clearPrinterLogs();
+  addPrinterLog('==================================================');
+  addPrinterLog('[STEP 1/5] Initiating printBarcodeViaBluetooth process...');
+  console.log('[BTPrinter] printBarcodeViaBluetooth called with options:', options);
+
+  try {
+    const paperSize = options.overridePaperSize || (await getSavedPaperSize());
+    const cols = paperSize === '80mm' ? 48 : 32;
+    addPrinterLog(`[STEP 2/5] Target Paper Format: ${paperSize} (${cols} columns).`);
+
+    const rawBarcode = (options.barcode || '').trim();
+    if (!rawBarcode) {
+      const err = 'Cannot print barcode: Product barcode string is empty or missing.';
+      addPrinterLog(`[ERROR] ${err}`);
+      console.error('[BTPrinter]', err);
+      throw new Error(err);
+    }
+
+    const count = Math.max(options.count || 1, 1);
+    const shopName = options.shopName || 'WHOLESALE POS';
+    const currency = options.currency || '$';
+
+    addPrinterLog(`[STEP 3/5] Generating ESC/POS payload for ${count} label(s) ("${options.productName}", SKU: ${rawBarcode})...`);
+
+    const chunks: Uint8Array[] = [];
+
+    // Initialize ESC/POS
+    chunks.push(escpos.init());
+
+    for (let i = 0; i < count; i++) {
+      addPrinterLog(`[STEP 3.${i + 1}] Formatting barcode tag ${i + 1} of ${count}...`);
+
+      // Header - Shop Name
+      chunks.push(escpos.alignCenter());
+      chunks.push(escpos.boldOn());
+      chunks.push(strToBytes(`${shopName}\n`));
+      chunks.push(escpos.boldOff());
+
+      // Product Name
+      chunks.push(escpos.boldOn());
+      chunks.push(strToBytes(`${options.productName}\n`));
+      chunks.push(escpos.boldOff());
+
+      // ESC/POS Barcode Parameters
+      // GS h 60 (barcode height in dots: 60)
+      chunks.push(new Uint8Array([GS, 0x68, 60]));
+      // GS w [width] (2 for 58mm, 3 for 80mm)
+      chunks.push(new Uint8Array([GS, 0x77, cols === 48 ? 3 : 2]));
+      // GS H 2 (print HRI characters below barcode)
+      chunks.push(new Uint8Array([GS, 0x48, 2]));
+      // GS f 0 (HRI font A)
+      chunks.push(new Uint8Array([GS, 0x66, 0]));
+
+      // ESC/POS CODE128 command: GS k 73 len payload
+      const barcodeBytes = strToBytes(rawBarcode);
+      const code128Payload = new Uint8Array([0x7B, 0x42, ...barcodeBytes]); // 0x7B 0x42 = Subset B prefix
+      const len = code128Payload.length;
+
+      chunks.push(new Uint8Array([GS, 0x6B, 73, len, ...code128Payload]));
+      chunks.push(strToBytes('\n'));
+
+      // Human-readable code + price
+      chunks.push(escpos.boldOn());
+      chunks.push(strToBytes(`PRICE: ${currency}${options.price.toLocaleString()}\n`));
+      chunks.push(escpos.boldOff());
+
+      if (i < count - 1) {
+        chunks.push(strToBytes('-'.repeat(cols) + '\n'));
+        chunks.push(escpos.lineFeed(1));
+      }
+    }
+
+    chunks.push(escpos.lineFeed(3));
+    chunks.push(escpos.cutPaper());
+
+    const binaryPayload = concatChunks(chunks);
+    addPrinterLog(`[STEP 4/5] ESC/POS binary payload ready: ${binaryPayload.length} bytes.`);
+    console.log(`[BTPrinter] Transmitting ${binaryPayload.length} bytes to Bluetooth thermal printer...`);
+
+    await transmitESCPOSToPrinter(binaryPayload, options.targetAddress);
+
+    addPrinterLog('[STEP 5/5] Barcode ESC/POS printing successfully transmitted!');
+    console.log('[BTPrinter] Barcode ESC/POS printing successfully transmitted.');
+  } catch (err: any) {
+    const msg = err?.message || 'Error transmitting ESC/POS barcode payload.';
+    addPrinterLog(`[FATAL ERROR] Barcode print error: ${msg}`);
+    console.error('[BTPrinter] Fatal error in printBarcodeViaBluetooth:', err);
+    throw new Error(msg);
+  }
+};

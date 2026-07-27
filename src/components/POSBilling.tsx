@@ -12,6 +12,7 @@ import { translations } from '../lib/translations';
 import { printReceiptViaBluetooth, getSavedPaperSize, getSavedPrinter } from '../lib/bluetoothPrinter';
 import { saveInvoiceTextDirect, saveInvoiceImageDirect } from '../lib/fileSaver';
 import { BluetoothPrinterModal } from './BluetoothPrinterModal';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
 
 interface POSBillingProps {
   db: DBState;
@@ -78,6 +79,7 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
   const [showScanSuccess, setShowScanSuccess] = useState<boolean>(false);
   const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
   const [showBTPrinterModal, setShowBTPrinterModal] = useState<boolean>(false);
+  const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
 
   // Custom Toast State
   const [toast, setToast] = useState<{
@@ -499,7 +501,7 @@ export default function POSBilling({ db, onSaveDB, onNavigate }: POSBillingProps
       const timeDiff = now - lastKeyTime;
       lastKeyTime = now;
 
-      const isFastScanner = timeDiff < 35;
+      const isFastScanner = timeDiff < 80;
       const shouldAccumulate = !isInput || isBarcodeField || (isInput && isFastScanner);
 
       if (!shouldAccumulate) {
@@ -891,6 +893,15 @@ ${settings.receiptFooter}
                   className="bg-indigo-600 hover:bg-indigo-500 rounded-xl px-3 text-white text-xs font-bold shadow-sm transition active:scale-98"
                 >
                   Enter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowScannerModal(true)}
+                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-xs shrink-0 cursor-pointer"
+                  title="Open Bluetooth Barcode Scanner / Camera Scanner Modal"
+                >
+                  <Barcode className="w-4 h-4" />
+                  <span className="hidden sm:inline">Scanner</span>
                 </button>
               </form>
 
@@ -1824,6 +1835,21 @@ ${settings.receiptFooter}
           </div>
         </div>
       )}
+
+      {/* Barcode & Bluetooth Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        products={products}
+        onScanSuccess={(code, product) => {
+          if (product) {
+            handleAddToCart(product);
+            triggerToast(`Scanned & added "${product.name}" to active cart!`, 'success', 'Item Added');
+          } else {
+            triggerToast(`Barcode "${code}" recognized, but not found in catalog.`, 'warning', 'Not Found');
+          }
+        }}
+      />
     </div>
   );
 }
