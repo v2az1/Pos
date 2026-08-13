@@ -224,7 +224,8 @@ const defaultSettings: ShopSettings = {
   receiptFooter: 'Thank you for shopping with us! Fresh Goods are non-refundable.',
   invoicePrefix: 'MSM',
   theme: 'light',
-  language: 'en'
+  language: 'en',
+  customUnits: ['Pcs', 'Kg', 'g', 'Ltr', 'Btl', 'Bag', 'Box', 'Pack']
 };
 
 const defaultBackups: BackupInfo[] = [

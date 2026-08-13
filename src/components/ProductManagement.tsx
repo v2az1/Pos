@@ -33,6 +33,8 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategoryName, setCustomCategoryName] = useState('');
+  const [isCustomUnit, setIsCustomUnit] = useState(false);
+  const [customUnitName, setCustomUnitName] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     barcode: '',
@@ -163,6 +165,8 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
     setEditingProduct(null);
     setIsCustomCategory(false);
     setCustomCategoryName('');
+    setIsCustomUnit(false);
+    setCustomUnitName('');
   };
 
   // Generate SKU & Barcode automatically
@@ -205,6 +209,17 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
       }
     }
 
+    let finalUnit = formData.unit;
+    if (isCustomUnit && customUnitName.trim()) {
+      finalUnit = customUnitName.trim();
+    }
+
+    // Persist custom unit into global customUnits setting array if newly typed
+    let updatedCustomUnits = settings.customUnits || ['Pcs', 'Kg', 'g', 'Ltr', 'Btl', 'Bag', 'Box', 'Pack'];
+    if (finalUnit && !updatedCustomUnits.some(u => u.toLowerCase() === finalUnit.toLowerCase())) {
+      updatedCustomUnits = [...updatedCustomUnits, finalUnit];
+    }
+
     if (editingProduct) {
       // Edit mode
       const updatedProducts = products.map(p => {
@@ -212,6 +227,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
           return {
             ...p,
             ...formData,
+            unit: finalUnit,
             categoryId: finalCategoryId,
             quantity: Number(formData.quantity),
             costPrice: Number(formData.costPrice),
@@ -225,6 +241,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
 
       onSaveDB({
         ...db,
+        settings: { ...settings, customUnits: updatedCustomUnits },
         categories: nextCategories,
         products: updatedProducts
       });
@@ -234,6 +251,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
       const newProduct: Product = {
         id: 'prod-' + Date.now(),
         ...formData,
+        unit: finalUnit,
         categoryId: finalCategoryId,
         quantity: Number(formData.quantity),
         costPrice: Number(formData.costPrice),
@@ -245,6 +263,7 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
 
       onSaveDB({
         ...db,
+        settings: { ...settings, customUnits: updatedCustomUnits },
         categories: nextCategories,
         products: [newProduct, ...products]
       });
@@ -597,6 +616,8 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
                             setEditingProduct(p);
                             setIsCustomCategory(false);
                             setCustomCategoryName('');
+                            setIsCustomUnit(false);
+                            setCustomUnitName('');
                             setShowAddEditModal(true);
                           }}
                           className="p-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 text-indigo-600 rounded-lg transition"
@@ -746,18 +767,58 @@ export default function ProductManagement({ db, onSaveDB }: ProductManagementPro
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">MEASURING UNIT TYPE</label>
-                <select
-                  value={formData.unit}
-                  onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                  className="w-full border border-slate-200 bg-transparent rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
-                >
-                  <option value="Pcs">Pieces (Pcs)</option>
-                  <option value="Kg">Kilogram (Kg)</option>
-                  <option value="Ltr">Litre (Ltr)</option>
-                  <option value="Box">Carrying Box (Box)</option>
-                  <option value="Pack">Bundle Pack (Pack)</option>
-                </select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-400">MEASURING UNIT TYPE</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomUnit(!isCustomUnit);
+                      if (!isCustomUnit) setCustomUnitName('');
+                    }}
+                    className="text-[10px] text-indigo-500 hover:text-indigo-400 font-extrabold transition flex items-center gap-0.5 cursor-pointer"
+                  >
+                    {isCustomUnit ? "✕ Select List" : "✍️ Write Custom"}
+                  </button>
+                </div>
+                {isCustomUnit ? (
+                  <input
+                    type="text"
+                    required
+                    value={customUnitName}
+                    onChange={(e) => setCustomUnitName(e.target.value)}
+                    placeholder="Enter custom unit (e.g. Bag, Bottle, Grams, Tray)..."
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-transparent rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 placeholder-slate-400"
+                  />
+                ) : (
+                  <select
+                    value={formData.unit}
+                    onChange={(e) => {
+                      if (e.target.value === '__CUSTOM_UNIT__') {
+                        setIsCustomUnit(true);
+                        setCustomUnitName('');
+                      } else {
+                        setFormData(prev => ({ ...prev, unit: e.target.value }));
+                      }
+                    }}
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-transparent rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-200 dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="Pcs" className="dark:bg-slate-800">Pieces (Pcs)</option>
+                    <option value="Kg" className="dark:bg-slate-800">Kilograms (Kg)</option>
+                    <option value="g" className="dark:bg-slate-800">Grams (g)</option>
+                    <option value="Ltr" className="dark:bg-slate-800">Litres (Ltr)</option>
+                    <option value="Btl" className="dark:bg-slate-800">Bottles (Btl)</option>
+                    <option value="Bag" className="dark:bg-slate-800">Bags (Bag / Flour Bag)</option>
+                    <option value="Box" className="dark:bg-slate-800">Carrying Box (Box)</option>
+                    <option value="Pack" className="dark:bg-slate-800">Bundle Pack (Pack)</option>
+                    {(settings.customUnits || [])
+                      .filter(u => u && !['pcs', 'kg', 'g', 'ltr', 'btl', 'bag', 'box', 'pack'].includes(u.toLowerCase()))
+                      .map(u => (
+                        <option key={u} value={u} className="dark:bg-slate-800">{u}</option>
+                      ))
+                    }
+                    <option value="__CUSTOM_UNIT__" className="font-bold text-indigo-600 dark:bg-slate-800">+ Write Custom Unit...</option>
+                  </select>
+                )}
               </div>              {/* Categorization */}
               <div>
                 <div className="flex items-center justify-between mb-1">

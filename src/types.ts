@@ -144,6 +144,7 @@ export interface ShopSettings {
   invoicePrefix: string;
   theme: 'light' | 'dark';
   language?: 'en' | 'ur';
+  customUnits?: string[]; // Custom measuring unit types
 }
 
 export interface BackupInfo {

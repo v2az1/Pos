@@ -35,6 +35,35 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
 
   const [msg, setMsg] = useState<string | null>(null);
 
+  // Custom measuring units management state
+  const [newUnitInput, setNewUnitInput] = useState('');
+
+  const handleAddCustomUnit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newUnitInput.trim();
+    if (!trimmed) return;
+
+    const currentUnits = formData.customUnits || ['Pcs', 'Kg', 'g', 'Ltr', 'Btl', 'Bag', 'Box', 'Pack'];
+    if (currentUnits.some(u => u.toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Unit type "${trimmed}" already exists in measuring units list.`);
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      customUnits: [...currentUnits, trimmed]
+    }));
+    setNewUnitInput('');
+  };
+
+  const handleRemoveCustomUnit = (unitToRemove: string) => {
+    const currentUnits = formData.customUnits || ['Pcs', 'Kg', 'g', 'Ltr', 'Btl', 'Bag', 'Box', 'Pack'];
+    setFormData(prev => ({
+      ...prev,
+      customUnits: currentUnits.filter(u => u !== unitToRemove)
+    }));
+  };
+
   // Bluetooth printer states
   const [btPrinterName, setBtPrinterName] = useState<string>('');
   const [paperSize, setPaperSizeState] = useState<'58mm' | '80mm'>('58mm');
@@ -270,6 +299,52 @@ export default function Settings({ db, onSaveDB, onToggleTheme, isDark }: Settin
                 <option value="ur">اردو (Urdu)</option>
               </select>
               <span className="block text-[10px] text-slate-400 leading-tight">Shifts full platform terminologies, layout direction cues, and printed receipt outputs into Urdu text instantly.</span>
+            </div>
+
+            {/* Custom Measuring Units Manager Block */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2 mt-2">
+              <label className="block text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Custom Measuring Units Manager</span>
+                <span className="text-[9.5px] font-semibold text-slate-400">e.g. Bag, Grams, Bottle, Tray, Carton</span>
+              </label>
+
+              {/* Input row to add new unit */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newUnitInput}
+                  onChange={(e) => setNewUnitInput(e.target.value)}
+                  placeholder="Type new unit (e.g. Flour Bag, Grams, Bottle)..."
+                  className="flex-1 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 placeholder-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomUnit}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shrink-0 cursor-pointer"
+                >
+                  + Add Unit
+                </button>
+              </div>
+
+              {/* Tag Cloud of active measuring units */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {(formData.customUnits || ['Pcs', 'Kg', 'g', 'Ltr', 'Btl', 'Bag', 'Box', 'Pack']).map(unit => (
+                  <span
+                    key={unit}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 text-xs font-bold"
+                  >
+                    <span>{unit}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCustomUnit(unit)}
+                      className="text-indigo-400 hover:text-rose-500 font-extrabold text-xs ml-0.5 cursor-pointer"
+                      title={`Remove unit "${unit}"`}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
